@@ -218,6 +218,7 @@ const walletSelect =
 const connectButton =
   document.getElementById('connectWallet') as HTMLButtonElement;
 
+
 const walletBox =
   document.getElementById('walletBox') as HTMLDivElement;
 
@@ -270,6 +271,15 @@ connectButton.addEventListener('click', async () => {
 
     connectedWalletAddress =
       response.publicKey.toString();
+      localStorage.setItem(
+  'preferredWallet',
+  walletSelect.value
+);
+
+localStorage.setItem(
+  'walletConnected',
+  'true'
+);
     console.log(
   'Connected wallet provider:',
   connectedWallet
@@ -300,6 +310,7 @@ console.log(
     alert('Wallet connection failed');
   }
 });
+
 
 tokenForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -418,3 +429,58 @@ console.log(
 );
 }
 });
+
+window.addEventListener(
+  'load',
+  async () => {
+    const wasConnected =
+      localStorage.getItem(
+        'walletConnected'
+      );
+
+    const preferredWallet =
+      localStorage.getItem(
+        'preferredWallet'
+      );
+
+    if (
+      wasConnected !== 'true' ||
+      !preferredWallet
+    ) {
+      return;
+    }
+
+    try {
+      walletSelect.value =
+        preferredWallet;
+
+      const provider =
+        getWalletProvider(
+          preferredWallet
+        );
+
+      if (!provider) {
+        return;
+      }
+
+      const response =
+       await provider.connect();
+
+      connectedWallet =
+        provider;
+
+      connectedWalletAddress =
+        response.publicKey.toString();
+
+      console.log(
+        'Auto reconnected wallet:',
+        connectedWalletAddress
+      );
+
+    } catch (error) {
+      console.log(
+        'Auto reconnect skipped.'
+      );
+    }
+  }
+);
