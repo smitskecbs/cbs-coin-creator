@@ -1,11 +1,23 @@
+export const RPC_ENDPOINT =
+  'https://api.devnet.solana.com';
 
-export const NETWORKS = {
-  devnet:
-    import.meta.env.VITE_HELIUS_DEVNET_RPC,
+export const SOLANA_NETWORKS = {
+  devnet: {
+    rpc:
+      'https://api.devnet.solana.com',
 
-  mainnet:
-    import.meta.env.VITE_HELIUS_MAINNET_RPC,
+    explorer:
+      'https://explorer.solana.com/?cluster=devnet',
+  },
+
+  mainnet: {
+    rpc:
+      'https://api.mainnet-beta.solana.com',
+
+    explorer:
+      'https://explorer.solana.com',
+  },
 };
 
-export const APP_NAME =
-  'CBS Coin Creator';
+export const ENABLE_MAINNET =
+  false;

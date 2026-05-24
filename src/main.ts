@@ -16,8 +16,10 @@ import {
 } from './uploadToPinata';
 
 import {
-  createMetadataAccount,
-} from './createMetadataAccount';
+  ENABLE_MAINNET,
+} from './solana/config';
+
+
 
 type WalletProvider = {
   connect: () => Promise<{
@@ -306,7 +308,10 @@ tokenForm.addEventListener('submit', async (event) => {
     alert('Connect wallet first');
     return;
   }
-  if (networkSelect.value === 'mainnet') {
+  if (
+  networkSelect.value === 'mainnet' &&
+  !ENABLE_MAINNET
+) {
   alert(
     'Mainnet minting is locked for now. Test on devnet first.'
   );
@@ -376,8 +381,7 @@ if (tokenLogoFile) {
   const revokeFreezeAuthority =
     (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked;
 
-  const result =
-    await createToken({
+ await createToken({
       network:
         networkSelect.value as 'devnet' | 'mainnet',
 
