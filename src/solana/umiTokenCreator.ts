@@ -15,6 +15,19 @@ import {
   walletAdapterIdentity,
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
 
+import {
+  mintV1,
+  TokenStandard,
+} from '@metaplex-foundation/mpl-token-metadata';
+
+import {
+  publicKey,
+} from '@metaplex-foundation/umi';
+
+import {
+  mplToolbox,
+} from '@metaplex-foundation/mpl-toolbox';
+
 type CreateUmiTokenParams = {
   walletProvider: any;
   metadataUri: string;
@@ -31,7 +44,9 @@ export async function createUmiToken(
     createUmi(
       'https://api.devnet.solana.com'
     );
-
+  umi.use(
+  mplToolbox()
+);
   umi.use(
     walletAdapterIdentity(
       params.walletProvider
@@ -75,7 +90,32 @@ const tx =
   ).sendAndConfirm(
     umi
   );
+ await mintV1(
+  umi,
+  {
+    mint:
+      mint.publicKey,
 
+    authority:
+      umi.identity,
+
+    amount:
+      BigInt(
+        params.supply *
+        10 ** params.decimals
+      ),
+
+    tokenOwner:
+      publicKey(
+        umi.identity.publicKey
+      ),
+
+    tokenStandard:
+      TokenStandard.Fungible,
+  }
+).sendAndConfirm(
+  umi
+);
 console.log(
   'Umi fungible token created:',
   mint.publicKey
