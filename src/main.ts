@@ -36,29 +36,13 @@ import {
 } from '@metaplex-foundation/mpl-token-metadata';
 
 import {
-  createUmi,
-} from '@metaplex-foundation/umi-bundle-defaults';
-
-import {
-  publicKey,
-} from '@metaplex-foundation/umi';
-
-import {
-  walletAdapterIdentity,
-} from '@metaplex-foundation/umi-signer-wallet-adapters';
+  updateTokenMetadata,
+} from './solana/updateTokenMetadata';
 
 console.log(
   'updateV1:',
   updateV1
 );
-
-const RPC_ENDPOINT =
-  'https://api.devnet.solana.com';
-
-const umi =
-  createUmi(
-    RPC_ENDPOINT
-  );
 
 type WalletProvider = {
   connect: () => Promise<{
@@ -924,12 +908,6 @@ updateMetadataButton.addEventListener(
       updateMetadataStatus.innerHTML =
         'Uploading new metadata...';
       
-        umi.use(
-  walletAdapterIdentity(
-  connectedWallet as any
-)
-);
-
       const uploadedMetadata =
         await uploadMetadataToPinata({
           name:
@@ -963,7 +941,16 @@ updateMetadataButton.addEventListener(
         'Updated metadata uploaded:',
         uploadedMetadata
       );
+      await updateTokenMetadata({
+  walletProvider:
+    connectedWallet,
 
+  mintAddress:
+    mintAddress,
+
+  metadataUri:
+    uploadedMetadata.metadataUrl,
+});
       updateMetadataStatus.innerHTML = `
         Metadata uploaded.<br><br>
         ${uploadedMetadata.metadataUrl}
