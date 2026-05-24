@@ -369,6 +369,27 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   />
 </label>
 
+<label class="form-label">
+  New Facebook
+</label>
+
+<input
+  type="text"
+  id="updateFacebook"
+  class="form-input"
+  placeholder="https://facebook.com/..."
+/>
+
+<label class="form-label">
+  New Logo
+</label>
+
+<input
+  type="file"
+  id="updateLogo"
+  accept="image/*"
+  class="form-input"
+/>
 <button
   id="updateMetadataButton"
   type="button"
@@ -904,10 +925,26 @@ updateMetadataButton.addEventListener(
 
       const updateTwitter =
         (document.getElementById('updateTwitter') as HTMLInputElement).value;
+     
+        const updateFacebook =
+  (document.getElementById('updateFacebook') as HTMLInputElement).value;
+
+  const updateLogo =
+  (document.getElementById('updateLogo') as HTMLInputElement).files?.[0];
 
       updateMetadataStatus.innerHTML =
         'Uploading new metadata...';
-      
+      let updatedImageUrl = '';
+
+if (updateLogo) {
+  const uploadedLogo =
+    await uploadFileToPinata(
+      updateLogo
+    );
+
+  updatedImageUrl =
+    uploadedLogo.imageUrl;
+}
       const uploadedMetadata =
         await uploadMetadataToPinata({
           name:
@@ -920,7 +957,7 @@ updateMetadataButton.addEventListener(
             updateDescription,
 
           image:
-            '',
+  updatedImageUrl,
 
           extensions: {
             website:
@@ -934,6 +971,9 @@ updateMetadataButton.addEventListener(
 
             twitter:
               updateTwitter,
+
+              facebook:
+  updateFacebook,
           },
         });
 
