@@ -56,11 +56,27 @@ export async function uploadFileToPinata(
       `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
   };
 }
+
 type TokenMetadata = {
   name: string;
+
   symbol: string;
+
   description: string;
+
   image: string;
+
+  extensions?: {
+    website?: string;
+
+    telegram?: string;
+
+    discord?: string;
+
+    twitter?: string;
+
+    facebook?: string;
+  };
 };
 
 export async function uploadMetadataToPinata(
@@ -74,6 +90,28 @@ export async function uploadMetadataToPinata(
       'Missing Pinata JWT'
     );
   }
+
+  const metadataJson = {
+    name:
+      metadata.name,
+
+    symbol:
+      metadata.symbol,
+
+    description:
+      metadata.description,
+
+    image:
+      metadata.image,
+
+    extensions:
+      metadata.extensions,
+  };
+
+  console.log(
+    'Metadata JSON:',
+    metadataJson
+  );
 
   const response =
     await fetch(
@@ -92,7 +130,7 @@ export async function uploadMetadataToPinata(
         body:
           JSON.stringify({
             pinataContent:
-              metadata,
+              metadataJson,
           }),
       }
     );

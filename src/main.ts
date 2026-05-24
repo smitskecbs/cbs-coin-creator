@@ -154,7 +154,50 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     rows="4"
   ></textarea>
 </label>
+<label>
+  Website
+  <input
+    id="tokenWebsite"
+    type="text"
+    placeholder="https://yourwebsite.com"
+  />
+</label>
 
+<label>
+  Telegram
+  <input
+    id="tokenTelegram"
+    type="text"
+    placeholder="https://t.me/yourgroup"
+  />
+</label>
+
+<label>
+  Discord
+  <input
+    id="tokenDiscord"
+    type="text"
+    placeholder="https://discord.gg/yourserver"
+  />
+</label>
+
+<label>
+  X / Twitter
+  <input
+    id="tokenTwitter"
+    type="text"
+    placeholder="https://x.com/yourproject"
+  />
+</label>
+
+<label>
+  Facebook
+  <input
+    id="tokenFacebook"
+    type="text"
+    placeholder="https://facebook.com/yourproject"
+  />
+</label>
         <div class="form-group">
   <label for="tokenLogo">
     Token logo
@@ -418,7 +461,21 @@ tokenForm.addEventListener('submit', async (event) => {
     Number(
       (document.getElementById('tokenDecimals') as HTMLInputElement).value
     );
+  
+    const tokenWebsite =
+  (document.getElementById('tokenWebsite') as HTMLInputElement).value;
 
+const tokenTelegram =
+  (document.getElementById('tokenTelegram') as HTMLInputElement).value;
+
+const tokenDiscord =
+  (document.getElementById('tokenDiscord') as HTMLInputElement).value;
+
+const tokenTwitter =
+  (document.getElementById('tokenTwitter') as HTMLInputElement).value;
+
+const tokenFacebook =
+  (document.getElementById('tokenFacebook') as HTMLInputElement).value;
   const supply =
     Number(
       (document.getElementById('tokenSupply') as HTMLInputElement).value
@@ -443,7 +500,13 @@ if (tokenLogoFile) {
     'Uploaded logo:',
     uploadedLogo
   );
-
+  console.log('Social fields:', {
+  tokenWebsite,
+  tokenTelegram,
+  tokenDiscord,
+  tokenTwitter,
+  tokenFacebook,
+});
   const uploadedMetadata =
     await uploadMetadataToPinata({
       name:
@@ -457,6 +520,23 @@ if (tokenLogoFile) {
 
       image:
         uploadedLogo.imageUrl,
+
+        extensions: {
+  website:
+    tokenWebsite,
+
+  telegram:
+    tokenTelegram,
+
+  discord:
+    tokenDiscord,
+
+  twitter:
+    tokenTwitter,
+
+  facebook:
+    tokenFacebook,
+},
     });
 
   console.log(
