@@ -6,31 +6,26 @@ import {
 } from '@solana/web3.js';
 
 import {
-  AuthorityType,
-  createSetAuthorityInstruction,
+  createAssociatedTokenAccountInstruction,
+  createMintToInstruction,
+  getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 
 type WalletProvider = any;
 
-type RevokeAuthoritiesParams = {
+type MintSupplyParams = {
   walletProvider: WalletProvider;
   walletAddress: string;
   mintAddress: string;
-  revokeMintAuthority: boolean;
-  revokeFreezeAuthority: boolean;
+  decimals: number;
+  supply: number;
 };
 
-export async function revokeAuthorities(
-  params: RevokeAuthoritiesParams
+export async function mintSupply(
+  params: MintSupplyParams
 ) {
-  if (
-    !params.revokeMintAuthority &&
-    !params.revokeFreezeAuthority
-  ) {
-    return null;
-  }
-
   const connection =
     new Connection(
       clusterApiUrl('devnet'),
@@ -47,34 +42,47 @@ export async function revokeAuthorities(
       params.mintAddress
     );
 
+  const tokenAccount =
+    getAssociatedTokenAddressSync(
+      mint,
+      payer
+    );
+
+  const rawSupply =
+    BigInt(params.supply) *
+    BigInt(
+      10 ** params.decimals
+    );
+
   const transaction =
     new Transaction();
 
-  if (params.revokeMintAuthority) {
+  const tokenAccountInfo =
+    await connection.getAccountInfo(
+      tokenAccount
+    );
+
+  if (!tokenAccountInfo) {
     transaction.add(
-      createSetAuthorityInstruction(
-        mint,
+      createAssociatedTokenAccountInstruction(
         payer,
-        AuthorityType.MintTokens,
-        null,
-        [],
-        TOKEN_PROGRAM_ID
+        tokenAccount,
+        payer,
+        mint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       )
     );
   }
 
-  if (params.revokeFreezeAuthority) {
-    transaction.add(
-      createSetAuthorityInstruction(
-        mint,
-        payer,
-        AuthorityType.FreezeAccount,
-        null,
-        [],
-        TOKEN_PROGRAM_ID
-      )
-    );
-  }
+  transaction.add(
+    createMintToInstruction(
+      mint,
+      tokenAccount,
+      payer,
+      rawSupply
+    )
+  );
 
   const latestBlockhash =
     await connection.getLatestBlockhash();
@@ -111,16 +119,23 @@ export async function revokeAuthorities(
   });
 
   console.log(
-    'Revoke authorities signature:',
+    'Mint supply signature:',
     signature
   );
 
   console.log(
-    'Revoke mint address:',
+    'Minted supply to token account:',
+    tokenAccount.toString()
+  );
+
+  console.log(
+    'Mint address used for supply:',
     mint.toString()
   );
 
   return {
     signature,
+    tokenAccount:
+      tokenAccount.toString(),
   };
 }

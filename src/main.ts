@@ -23,6 +23,10 @@ import {
   revokeAuthorities,
 } from './solana/revokeAuthorities';
 
+import {
+  mintSupply,
+} from './solana/mintSupply';
+
 
 
 type WalletProvider = {
@@ -138,7 +142,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             required
           />
         </label>
-        
+        <label>
+  Description
+  <textarea
+    id="tokenDescription"
+    placeholder="Describe your token..."
+    rows="4"
+  ></textarea>
+</label>
+
         <div class="form-group">
   <label for="tokenLogo">
     Token logo
@@ -339,7 +351,8 @@ tokenForm.addEventListener('submit', async (event) => {
   const symbol =
     (document.getElementById('tokenSymbol') as HTMLInputElement).value;
  
-
+  const tokenDescription =
+  (document.getElementById('tokenDescription') as HTMLTextAreaElement).value;
   const decimals =
     Number(
       (document.getElementById('tokenDecimals') as HTMLInputElement).value
@@ -379,7 +392,7 @@ if (tokenLogoFile) {
         symbol,
 
       description:
-        `${tokenName} token created with CBS Coin Creator.`,
+  tokenDescription,
 
       image:
         uploadedLogo.imageUrl,
@@ -413,6 +426,22 @@ const umiResult =
     supply:
       supply,
   });
+await mintSupply({
+  walletProvider:
+    connectedWallet,
+
+  walletAddress:
+    connectedWalletAddress,
+
+  mintAddress:
+    umiResult.mintAddress,
+
+  decimals:
+    decimals,
+
+  supply:
+    supply,
+});
 
 await revokeAuthorities({
   walletProvider:

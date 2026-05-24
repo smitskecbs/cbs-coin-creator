@@ -90,6 +90,7 @@ const tx =
   ).sendAndConfirm(
     umi
   );
+  /*
  await mintV1(
   umi,
   {
@@ -116,6 +117,7 @@ const tx =
 ).sendAndConfirm(
   umi
 );
+*/
 console.log(
   'Umi fungible token created:',
   mint.publicKey
