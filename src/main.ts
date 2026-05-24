@@ -309,6 +309,66 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="manageTokenStatus" class="wallet-box">
     Token tool status will appear here
   </div>
+  <hr />
+
+<h2>Update token metadata</h2>
+
+<label>
+  New description
+  <textarea
+    id="updateDescription"
+    placeholder="New token description..."
+    rows="4"
+  ></textarea>
+</label>
+
+<label>
+  New website
+  <input
+    id="updateWebsite"
+    type="text"
+    placeholder="https://yourwebsite.com"
+  />
+</label>
+
+<label>
+  New Telegram
+  <input
+    id="updateTelegram"
+    type="text"
+    placeholder="https://t.me/yourgroup"
+  />
+</label>
+
+<label>
+  New Discord
+  <input
+    id="updateDiscord"
+    type="text"
+    placeholder="https://discord.gg/yourserver"
+  />
+</label>
+
+<label>
+  New X / Twitter
+  <input
+    id="updateTwitter"
+    type="text"
+    placeholder="https://x.com/yourproject"
+  />
+</label>
+
+<button
+  id="updateMetadataButton"
+  type="button"
+  class="primary-btn"
+>
+  Upload New Metadata
+</button>
+
+<div id="updateMetadataStatus" class="wallet-box">
+  Metadata update status will appear here
+</div>
 </div>
     </section>
   </main>
@@ -342,6 +402,15 @@ const manageTokenStatus =
 const tokenInfoBox =
   document.getElementById(
     'tokenInfoBox'
+  ) as HTMLDivElement;
+  const updateMetadataButton =
+  document.getElementById(
+    'updateMetadataButton'
+  ) as HTMLButtonElement;
+
+const updateMetadataStatus =
+  document.getElementById(
+    'updateMetadataStatus'
   ) as HTMLDivElement;
 const manageMintAddressInput =
   document.getElementById(
@@ -725,6 +794,10 @@ manageMintAddressInput.addEventListener(
 manageTokenButton.addEventListener(
   'click',
   async () => {
+    console.log(
+      'Apply Token Tools clicked'
+    );
+
     if (!connectedWallet) {
       alert('Connect wallet first');
       return;
@@ -737,36 +810,37 @@ manageTokenButton.addEventListener(
       alert('Enter a mint address');
       return;
     }
+
     const tokenInfo =
-  await getTokenInfo(
-    mintAddress
-  );
+      await getTokenInfo(
+        mintAddress
+      );
 
-tokenInfoBox.innerHTML = `
-  <strong>Supply:</strong><br>
-${tokenInfo.formattedSupply}
+    tokenInfoBox.innerHTML = `
+      <strong>Supply:</strong><br>
+      ${tokenInfo.formattedSupply}
 
-  <br><br>
+      <br><br>
 
-  <strong>Decimals:</strong><br>
-  ${tokenInfo.decimals}
+      <strong>Decimals:</strong><br>
+      ${tokenInfo.decimals}
 
-  <br><br>
+      <br><br>
 
-  <strong>Mint Authority:</strong><br>
-  ${
-    tokenInfo.mintAuthority
-      ?? 'Revoked'
-  }
+      <strong>Mint Authority:</strong><br>
+      ${
+        tokenInfo.mintAuthority
+          ?? 'Revoked'
+      }
 
-  <br><br>
+      <br><br>
 
-  <strong>Freeze Authority:</strong><br>
-  ${
-    tokenInfo.freezeAuthority
-      ?? 'Revoked'
-  }
-`;
+      <strong>Freeze Authority:</strong><br>
+      ${
+        tokenInfo.freezeAuthority
+          ?? 'Revoked'
+      }
+    `;
 
     manageTokenStatus.innerHTML =
       'Applying token tools...';
@@ -792,6 +866,84 @@ ${tokenInfo.formattedSupply}
       'Token tools applied. Check Explorer.';
   }
 );
+
+updateMetadataButton.addEventListener(
+  'click',
+  async () => {
+    try {
+      const mintAddress =
+        (document.getElementById('manageMintAddress') as HTMLInputElement).value;
+
+      if (!mintAddress) {
+        alert('Enter mint address first');
+        return;
+      }
+
+      const updateDescription =
+        (document.getElementById('updateDescription') as HTMLTextAreaElement).value;
+
+      const updateWebsite =
+        (document.getElementById('updateWebsite') as HTMLInputElement).value;
+
+      const updateTelegram =
+        (document.getElementById('updateTelegram') as HTMLInputElement).value;
+
+      const updateDiscord =
+        (document.getElementById('updateDiscord') as HTMLInputElement).value;
+
+      const updateTwitter =
+        (document.getElementById('updateTwitter') as HTMLInputElement).value;
+
+      updateMetadataStatus.innerHTML =
+        'Uploading new metadata...';
+
+      const uploadedMetadata =
+        await uploadMetadataToPinata({
+          name:
+            'Updated Metadata',
+
+          symbol:
+            'UPDATED',
+
+          description:
+            updateDescription,
+
+          image:
+            '',
+
+          extensions: {
+            website:
+              updateWebsite,
+
+            telegram:
+              updateTelegram,
+
+            discord:
+              updateDiscord,
+
+            twitter:
+              updateTwitter,
+          },
+        });
+
+      console.log(
+        'Updated metadata uploaded:',
+        uploadedMetadata
+      );
+
+      updateMetadataStatus.innerHTML = `
+        Metadata uploaded.<br><br>
+        ${uploadedMetadata.metadataUrl}
+      `;
+    } catch (error) {
+      console.error(error);
+
+      updateMetadataStatus.innerHTML =
+        'Metadata update failed';
+    }
+  }
+);
+ 
 
 window.addEventListener(
   'load',
