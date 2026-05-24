@@ -19,6 +19,10 @@ import {
   createUmiToken,
 } from './solana/umiTokenCreator';
 
+import {
+  revokeAuthorities,
+} from './solana/revokeAuthorities';
+
 
 
 type WalletProvider = {
@@ -391,24 +395,47 @@ if (tokenLogoFile) {
 );
 const umiResult =
   await createUmiToken({
+    walletProvider:
+      connectedWallet,
+
+    metadataUri:
+      uploadedMetadata.metadataUrl,
+
+    tokenName:
+      tokenName,
+
+    symbol:
+      symbol,
+
+    decimals:
+      decimals,
+
+    supply:
+      supply,
+  });
+
+await revokeAuthorities({
   walletProvider:
     connectedWallet,
 
-  metadataUri:
-    uploadedMetadata.metadataUrl,
+  walletAddress:
+    connectedWalletAddress,
 
-  tokenName:
-    tokenName,
+  mintAddress:
+    umiResult.mintAddress,
 
-  symbol:
-    symbol,
+  revokeMintAuthority:
+    (document.getElementById('revokeMintAuthority') as HTMLInputElement).checked,
 
-  decimals:
-    decimals,
-
-  supply:
-    supply,
+  revokeFreezeAuthority:
+    (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked,
 });
+
+console.log(
+  'Umi result:',
+  umiResult
+);
+
 const tokenStatus =
   document.getElementById(
     'tokenStatus'
