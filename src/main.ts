@@ -3,10 +3,6 @@ import './polyfills';
 import './style.css';
 
 import {
-  createToken,
-} from './solana/createToken';
-
-import {
   getWalletProvider,
 } from './solana/wallets';
 
@@ -393,7 +389,7 @@ if (tokenLogoFile) {
   console.log(
   'Calling Umi test now...'
 );
-
+const umiResult =
   await createUmiToken({
   walletProvider:
     connectedWallet,
@@ -413,38 +409,59 @@ if (tokenLogoFile) {
   supply:
     supply,
 });
-  const revokeMintAuthority =
-    (document.getElementById('revokeMintAuthority') as HTMLInputElement).checked;
+const tokenStatus =
+  document.getElementById(
+    'tokenStatus'
+  ) as HTMLDivElement | null;
 
-  const revokeFreezeAuthority =
-    (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked;
+if (tokenStatus) {
+  tokenStatus.innerHTML = `
+    <strong>
+      Umi token created
+    </strong>
 
- await createToken({
-      network:
-        networkSelect.value as 'devnet' | 'mainnet',
+    <br><br>
 
-      walletAddress:
-        connectedWalletAddress,
+    <strong>
+      Mint address:
+    </strong><br>
+    ${umiResult.mintAddress}
 
-      walletProvider:
-        connectedWallet,
+    <br><br>
 
-      tokenName:
-        tokenName,
+    <strong>
+      Metadata:
+    </strong><br>
+    ${uploadedMetadata.metadataUrl}
+  `;
+}
+ 
+ //await createToken({
+     // network:
+      //  networkSelect.value as 'devnet' | 'mainnet',
 
-      symbol:
-        symbol,
+      //walletAddress:
+      //  connectedWalletAddress,
 
-      decimals:
-        decimals,
+      //walletProvider:
+      //  connectedWallet,
 
-      supply:
-        supply,
+      //tokenName:
+      //  tokenName,
 
-      revokeMintAuthority,
+      //symbol:
+      //  symbol,
 
-      revokeFreezeAuthority,
-    });
+      //decimals:
+      //  decimals,
+
+      //supply:
+       // supply,
+
+      //revokeMintAuthority,
+
+      //revokeFreezeAuthority,
+   // });
 
   console.log(
   'On-chain metadata creation is temporarily disabled.'

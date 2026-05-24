@@ -1,4 +1,13 @@
 import {
+  createFungible,
+} from '@metaplex-foundation/mpl-token-metadata';
+
+import {
+  generateSigner,
+  percentAmount,
+} from '@metaplex-foundation/umi';
+
+import {
   createUmi,
 } from '@metaplex-foundation/umi-bundle-defaults';
 
@@ -39,8 +48,53 @@ export async function createUmiToken(
     params
   );
 
-  return {
-    ok:
-      true,
-  };
+const mint =
+  generateSigner(umi);
+
+const tx =
+  await createFungible(
+    umi,
+    {
+      mint,
+
+      name:
+        params.tokenName,
+
+      symbol:
+        params.symbol,
+
+      uri:
+        params.metadataUri,
+
+      sellerFeeBasisPoints:
+        percentAmount(0),
+
+      decimals:
+        params.decimals,
+    }
+  ).sendAndConfirm(
+    umi
+  );
+
+console.log(
+  'Umi fungible token created:',
+  mint.publicKey
+);
+
+console.log(
+  'Umi tx:',
+  tx
+);
+
+return {
+  mintAddress:
+    mint.publicKey.toString(),
+
+  signature:
+    Buffer.from(
+      tx.signature
+    ).toString(
+      'base64'
+    ),
+};
 }
