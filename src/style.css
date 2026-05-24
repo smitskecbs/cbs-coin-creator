@@ -1,0 +1,159 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #1a1a1a;
+  background: #ffffff;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.hero-card {
+  max-width: 720px;
+  padding: 42px;
+  border: 1px solid rgba(216, 111, 0, 0.2);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 10px 40px rgba(216, 111, 0, 0.08);
+  text-align: center;
+}
+
+.eyebrow {
+  color: #d86f00;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+h1 {
+  font-size: clamp(42px, 7vw, 82px);
+  margin: 12px 0;
+  color: #111111;
+}
+
+.hero-text {
+  font-size: 20px;
+  color: #555555;
+}
+
+.actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.primary-btn,
+.secondary-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #ffb347, #d86f00);
+  color: white;
+}
+
+.secondary-btn {
+  border: 1px solid rgba(216, 111, 0, 0.25);
+  color: #d86f00;
+  background: white;
+}
+.wallet-box {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #fafafa;
+  border: 1px solid rgba(216, 111, 0, 0.15);
+  color: #444;
+  word-break: break-word;
+}
+.wallet-panel {
+  margin-top: 28px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.wallet-panel label {
+  font-weight: 800;
+  color: #222;
+}
+
+.wallet-panel select {
+  width: min(100%, 340px);
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 111, 0, 0.25);
+  background: #ffffff;
+  color: #222;
+  font-weight: 700;
+}
+
+.vanity-link {
+  display: inline-block;
+  margin-top: 22px;
+  color: #d86f00;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.wallet-box {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #fafafa;
+  border: 1px solid rgba(216, 111, 0, 0.15);
+  color: #444;
+  word-break: break-word;
+}
+.token-form {
+  margin-top: 34px;
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+.token-form h2 {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.token-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: #222;
+}
+
+.token-form input {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  font-size: 16px;
+}
+
+.checkbox-row {
+  display: flex !important;
+  grid-template-columns: unset !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
+}
