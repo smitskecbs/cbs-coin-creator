@@ -19,6 +19,10 @@ import {
   ENABLE_MAINNET,
 } from './solana/config';
 
+import {
+  createUmiToken,
+} from './solana/umiTokenCreator';
+
 
 
 type WalletProvider = {
@@ -385,7 +389,30 @@ if (tokenLogoFile) {
     'Uploaded metadata:',
     uploadedMetadata
   );
+  
+  console.log(
+  'Calling Umi test now...'
+);
 
+  await createUmiToken({
+  walletProvider:
+    connectedWallet,
+
+  metadataUri:
+    uploadedMetadata.metadataUrl,
+
+  tokenName:
+    tokenName,
+
+  symbol:
+    symbol,
+
+  decimals:
+    decimals,
+
+  supply:
+    supply,
+});
   const revokeMintAuthority =
     (document.getElementById('revokeMintAuthority') as HTMLInputElement).checked;
 
