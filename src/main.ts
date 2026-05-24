@@ -27,6 +27,10 @@ import {
   mintSupply,
 } from './solana/mintSupply';
 
+import {
+  getTokenInfo,
+} from './solana/getTokenInfo';
+
 
 
 type WalletProvider = {
@@ -221,6 +225,48 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="tokenStatus" class="wallet-box">
         Token status will appear here
       </div>
+      <div class="token-form">
+  <h2>Manage existing token</h2>
+
+  <label>
+    Mint address
+    <input
+      id="manageMintAddress"
+      type="text"
+      placeholder="Paste token mint address"
+    />
+  </label>
+<div id="tokenInfoBox" class="wallet-box">
+  Token info will appear here
+</div>
+  <label class="checkbox-row">
+    <input
+      id="manageRevokeMintAuthority"
+      type="checkbox"
+    />
+    Revoke mint authority
+  </label>
+
+  <label class="checkbox-row">
+    <input
+      id="manageRevokeFreezeAuthority"
+      type="checkbox"
+    />
+    Revoke freeze authority
+  </label>
+
+  <button
+    id="manageTokenButton"
+    type="button"
+    class="primary-btn"
+  >
+    Apply Token Tools
+  </button>
+
+  <div id="manageTokenStatus" class="wallet-box">
+    Token tool status will appear here
+  </div>
+</div>
     </section>
   </main>
 `;
@@ -240,9 +286,24 @@ const walletBox =
 
 const tokenForm =
   document.getElementById('tokenForm') as HTMLFormElement;
+const manageTokenButton =
+  document.getElementById(
+    'manageTokenButton'
+  ) as HTMLButtonElement;
 
+const manageTokenStatus =
+  document.getElementById(
+    'manageTokenStatus'
+  ) as HTMLDivElement;
 
-
+const tokenInfoBox =
+  document.getElementById(
+    'tokenInfoBox'
+  ) as HTMLDivElement;
+const manageMintAddressInput =
+  document.getElementById(
+    'manageMintAddress'
+  ) as HTMLInputElement;
   const tokenLogoInput =
   document.getElementById('tokenLogo') as HTMLInputElement | null;
 
@@ -529,6 +590,128 @@ console.log(
 );
 }
 });
+manageMintAddressInput.addEventListener(
+  'input',
+  async () => {
+    const mintAddress =
+      manageMintAddressInput.value.trim();
+
+    if (
+      mintAddress.length < 32
+    ) {
+      tokenInfoBox.innerHTML =
+        'Token info will appear here';
+
+      return;
+    }
+
+    try {
+      const tokenInfo =
+        await getTokenInfo(
+          mintAddress
+        );
+
+      tokenInfoBox.innerHTML = `
+        <strong>Supply:</strong><br>
+        ${tokenInfo.formattedSupply}
+
+        <br><br>
+
+        <strong>Decimals:</strong><br>
+        ${tokenInfo.decimals}
+
+        <br><br>
+
+        <strong>Mint Authority:</strong><br>
+        ${
+          tokenInfo.mintAuthority
+            ?? 'Revoked'
+        }
+
+        <br><br>
+
+        <strong>Freeze Authority:</strong><br>
+        ${
+          tokenInfo.freezeAuthority
+            ?? 'Revoked'
+        }
+      `;
+    } catch {
+      tokenInfoBox.innerHTML =
+        'Token not found';
+    }
+  }
+);
+manageTokenButton.addEventListener(
+  'click',
+  async () => {
+    if (!connectedWallet) {
+      alert('Connect wallet first');
+      return;
+    }
+
+    const mintAddress =
+      (document.getElementById('manageMintAddress') as HTMLInputElement).value;
+
+    if (!mintAddress) {
+      alert('Enter a mint address');
+      return;
+    }
+    const tokenInfo =
+  await getTokenInfo(
+    mintAddress
+  );
+
+tokenInfoBox.innerHTML = `
+  <strong>Supply:</strong><br>
+${tokenInfo.formattedSupply}
+
+  <br><br>
+
+  <strong>Decimals:</strong><br>
+  ${tokenInfo.decimals}
+
+  <br><br>
+
+  <strong>Mint Authority:</strong><br>
+  ${
+    tokenInfo.mintAuthority
+      ?? 'Revoked'
+  }
+
+  <br><br>
+
+  <strong>Freeze Authority:</strong><br>
+  ${
+    tokenInfo.freezeAuthority
+      ?? 'Revoked'
+  }
+`;
+
+    manageTokenStatus.innerHTML =
+      'Applying token tools...';
+
+    await revokeAuthorities({
+      walletProvider:
+        connectedWallet,
+
+      walletAddress:
+        connectedWalletAddress,
+
+      mintAddress:
+        mintAddress,
+
+      revokeMintAuthority:
+        (document.getElementById('manageRevokeMintAuthority') as HTMLInputElement).checked,
+
+      revokeFreezeAuthority:
+        (document.getElementById('manageRevokeFreezeAuthority') as HTMLInputElement).checked,
+    });
+
+    manageTokenStatus.innerHTML =
+      'Token tools applied. Check Explorer.';
+  }
+);
 
 window.addEventListener(
   'load',

@@ -16,15 +16,6 @@ import {
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
 
 import {
-  mintV1,
-  TokenStandard,
-} from '@metaplex-foundation/mpl-token-metadata';
-
-import {
-  publicKey,
-} from '@metaplex-foundation/umi';
-
-import {
   mplToolbox,
 } from '@metaplex-foundation/mpl-toolbox';
 
