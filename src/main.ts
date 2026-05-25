@@ -141,6 +141,77 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
       <form id="tokenForm" class="token-form">
         <h2>Create your token</h2>
+      
+        <div class="wallet-box">
+  <strong>Advanced: Vanity Mint Address</strong>
+  <br><br>
+  Optional. For experienced users. This can take longer and use more CPU.
+
+  <br><br>
+
+  <label>
+    Vanity pattern
+    <input
+      id="vanityMintPattern"
+      type="text"
+      class="wallet-input"
+      placeholder="Example: CBS"
+      maxlength="5"
+    />
+  </label>
+
+<label>
+  End pattern
+  <input
+    id="vanityMintEndPattern"
+    type="text"
+    class="wallet-input"
+    placeholder="Example: SOL"
+    maxlength="5"
+  />
+</label>
+
+    <label>
+  Match position
+
+  <select id="vanityMintPosition">
+    <option value="prefix">
+      Starts with
+    </option>
+
+    <option value="suffix">
+      Ends with
+    </option>
+
+    <option value="contains">
+      Contains
+    </option>
+
+   <option value="both">
+  Starts OR Ends with
+</option>
+
+<option value="bothEnds">
+  Starts AND Ends with
+</option>
+
+  </select>
+</label>
+
+<br><br>
+
+<label>
+  <input
+    type="checkbox"
+    id="vanityIgnoreCase"
+  />
+
+  Ignore uppercase/lowercase
+</label>
+
+<p style="font-size: 12px; opacity: 0.8;">
+  Warning: vanity mint generation can take longer depending on the pattern.
+</p>
 
         <label>
           Token name
@@ -683,7 +754,20 @@ const umiResult =
 
     supply:
       supply,
+
+      vanityPattern:
+  (document.getElementById('vanityMintPattern') as HTMLInputElement).value,
+  
+  vanityEndPattern:
+  (document.getElementById('vanityMintEndPattern') as HTMLInputElement).value,
+  
+vanityPosition:
+  (document.getElementById('vanityMintPosition') as HTMLSelectElement).value as any,
+
+vanityIgnoreCase:
+  (document.getElementById('vanityIgnoreCase') as HTMLInputElement).checked,
   });
+
 await mintSupply({
   walletProvider:
     connectedWallet,

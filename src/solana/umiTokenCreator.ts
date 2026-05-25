@@ -19,6 +19,10 @@ import {
   mplToolbox,
 } from '@metaplex-foundation/mpl-toolbox';
 
+import {
+  findVanityMint,
+} from './findVanityMint';
+
 type CreateUmiTokenParams = {
   walletProvider: any;
   metadataUri: string;
@@ -26,6 +30,10 @@ type CreateUmiTokenParams = {
   symbol: string;
   decimals: number;
   supply: number;
+  vanityPattern?: string;
+vanityPosition?: 'prefix' | 'suffix' | 'contains' | 'both' | 'bothEnds';
+vanityIgnoreCase?: boolean;
+vanityEndPattern?: string;
 };
 
 export async function createUmiToken(
@@ -54,8 +62,47 @@ export async function createUmiToken(
     params
   );
 
-const mint =
+let mint =
   generateSigner(umi);
+
+if (
+  params.vanityPattern &&
+  params.vanityPattern.trim().length > 0
+) {
+  console.log(
+    'Searching vanity mint:',
+    params.vanityPattern
+  );
+
+  const vanityResult =
+    await findVanityMint({
+      umi,
+      pattern:
+        params.vanityPattern.trim(),
+        
+        endPattern:
+  params.vanityEndPattern?.trim() ?? '',
+
+      position:
+        params.vanityPosition ?? 'prefix',
+
+      ignoreCase:
+        params.vanityIgnoreCase ?? true,
+
+      maxAttempts:
+        100000,
+    });
+
+  mint =
+    vanityResult.mint;
+
+  console.log(
+    'Vanity mint found:',
+    vanityResult.address,
+    'attempts:',
+    vanityResult.attempts
+  );
+}
 
 const tx =
   await createFungible(
