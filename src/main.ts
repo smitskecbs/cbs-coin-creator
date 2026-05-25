@@ -138,6 +138,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="walletBox" class="wallet-box">
         No wallet connected
       </div>
+      
+      <div id="progressStatus" class="wallet-box">
+  Ready
+</div>
 
       <form id="tokenForm" class="token-form">
         <h2>Create your token</h2>
@@ -500,6 +504,11 @@ const connectButton =
 const walletBox =
   document.getElementById('walletBox') as HTMLDivElement;
 
+  const progressStatus =
+  document.getElementById(
+    'progressStatus'
+  ) as HTMLDivElement;
+
 const tokenForm =
   document.getElementById('tokenForm') as HTMLFormElement;
 const manageTokenButton =
@@ -546,7 +555,8 @@ if (tokenLogoInput && tokenLogoPreview) {
 
     const file =
       tokenLogoInput.files?.[0];
-
+      progressStatus.innerHTML =
+  'Uploading logo...';
     if (!file) {
       return;
     }
@@ -688,6 +698,10 @@ if (tokenLogoFile) {
     'Uploaded logo:',
     uploadedLogo
   );
+
+  progressStatus.innerHTML =
+  'Uploading metadata...';
+
   console.log('Social fields:', {
   tokenWebsite,
   tokenTelegram,
@@ -735,6 +749,9 @@ if (tokenLogoFile) {
   console.log(
   'Calling Umi test now...'
 );
+progressStatus.innerHTML =
+  'Searching vanity mint...';
+
 const umiResult =
   await createUmiToken({
     walletProvider:
@@ -760,13 +777,18 @@ const umiResult =
   
   vanityEndPattern:
   (document.getElementById('vanityMintEndPattern') as HTMLInputElement).value,
-  
+
 vanityPosition:
   (document.getElementById('vanityMintPosition') as HTMLSelectElement).value as any,
 
 vanityIgnoreCase:
   (document.getElementById('vanityIgnoreCase') as HTMLInputElement).checked,
   });
+
+  progressStatus.innerHTML =
+  'Minting supply...';
+  progressStatus.innerHTML =
+  'Creating token account...';
 
 await mintSupply({
   walletProvider:
@@ -785,6 +807,9 @@ await mintSupply({
     supply,
 });
 
+progressStatus.innerHTML =
+  'Revoking authorities...';
+
 await revokeAuthorities({
   walletProvider:
     connectedWallet,
@@ -802,6 +827,9 @@ await revokeAuthorities({
     (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked,
 });
 
+progressStatus.innerHTML =
+  'Done';
+  
 console.log(
   'Umi result:',
   umiResult
