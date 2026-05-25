@@ -5,6 +5,7 @@ import {
 import {
   publicKey,
   some,
+  none,
 } from '@metaplex-foundation/umi';
 
 import {
@@ -94,6 +95,58 @@ export async function updateTokenMetadata(
 
   console.log(
     'On-chain metadata update tx:',
+    tx
+  );
+
+  return {
+    success:
+      true,
+  };
+}
+export async function lockTokenMetadata(
+  walletProvider: any,
+  mintAddress: string
+) {
+  const umi =
+    createUmi(
+      'https://api.devnet.solana.com'
+    );
+
+  umi.use(
+    walletAdapterIdentity(
+      walletProvider
+    )
+  );
+
+  const mint =
+    publicKey(
+      mintAddress
+    );
+
+  const tx =
+    await updateV1(
+      umi,
+      {
+        mint,
+
+        authority:
+          umi.identity,
+
+        payer:
+          umi.identity,
+
+        newUpdateAuthority:
+          none(),
+
+        isMutable:
+          some(false),
+      }
+    ).sendAndConfirm(
+      umi
+    );
+
+  console.log(
+    'Metadata permanently locked:',
     tx
   );
 

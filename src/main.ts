@@ -37,7 +37,12 @@ import {
 
 import {
   updateTokenMetadata,
+  lockTokenMetadata,
 } from './solana/updateTokenMetadata';
+
+import {
+  fetchTokenMetadataJson,
+} from './solana/fetchTokenMetadataJson';
 
 console.log(
   'updateV1:',
@@ -397,7 +402,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 >
   Upload New Metadata
 </button>
-
+<button
+  id="lockMetadataButton"
+  class="connect-button"
+>
+  Lock Metadata Permanently
+</button>
 <div id="updateMetadataStatus" class="wallet-box">
   Metadata update status will appear here
 </div>
@@ -444,6 +454,12 @@ const updateMetadataStatus =
   document.getElementById(
     'updateMetadataStatus'
   ) as HTMLDivElement;
+
+  const lockMetadataButton =
+  document.getElementById(
+    'lockMetadataButton'
+  ) as HTMLButtonElement;
+
 const manageMintAddressInput =
   document.getElementById(
     'manageMintAddress'
@@ -910,6 +926,16 @@ updateMetadataButton.addEventListener(
         alert('Enter mint address first');
         return;
       }
+      
+      const currentMetadata =
+  await fetchTokenMetadataJson(
+    mintAddress
+  );
+
+console.log(
+  'Current metadata:',
+  currentMetadata
+);
 
       const updateDescription =
         (document.getElementById('updateDescription') as HTMLTextAreaElement).value;
@@ -945,43 +971,52 @@ if (updateLogo) {
   updatedImageUrl =
     uploadedLogo.imageUrl;
 }
-      const uploadedMetadata =
-        await uploadMetadataToPinata({
-          name:
-            'Updated Metadata',
+ const uploadedMetadata =
+  await uploadMetadataToPinata({
+    name:
+      currentMetadata.json.name,
 
-          symbol:
-            'UPDATED',
+    symbol:
+      currentMetadata.json.symbol,
 
-          description:
-            updateDescription,
+    description:
+      updateDescription ||
+      currentMetadata.json.description,
 
-          image:
-  updatedImageUrl,
+    image:
+  updatedImageUrl ||
+  currentMetadata.json.image ||
+  '',
 
-          extensions: {
-            website:
-              updateWebsite,
+    extensions: {
+      website:
+        updateWebsite ||
+        currentMetadata.json.extensions?.website,
 
-            telegram:
-              updateTelegram,
+      telegram:
+        updateTelegram ||
+        currentMetadata.json.extensions?.telegram,
 
-            discord:
-              updateDiscord,
+      discord:
+        updateDiscord ||
+        currentMetadata.json.extensions?.discord,
 
-            twitter:
-              updateTwitter,
+      twitter:
+        updateTwitter ||
+        currentMetadata.json.extensions?.twitter,
 
-              facebook:
-  updateFacebook,
-          },
-        });
+      facebook:
+        updateFacebook ||
+        currentMetadata.json.extensions?.facebook,
+    },
+  });
 
-      console.log(
-        'Updated metadata uploaded:',
-        uploadedMetadata
-      );
-      await updateTokenMetadata({
+console.log(
+  'Updated metadata uploaded:',
+  uploadedMetadata
+);
+
+await updateTokenMetadata({
   walletProvider:
     connectedWallet,
 
@@ -991,10 +1026,11 @@ if (updateLogo) {
   metadataUri:
     uploadedMetadata.metadataUrl,
 });
-      updateMetadataStatus.innerHTML = `
-        Metadata uploaded.<br><br>
-        ${uploadedMetadata.metadataUrl}
-      `;
+
+updateMetadataStatus.innerHTML = `
+  Metadata uploaded.<br><br>
+  ${uploadedMetadata.metadataUrl}
+`;
     } catch (error) {
       console.error(error);
 
@@ -1003,7 +1039,42 @@ if (updateLogo) {
     }
   }
 );
- 
+ lockMetadataButton.addEventListener(
+  'click',
+  async () => {
+    try {
+      const mintAddress =
+        (document.getElementById('manageMintAddress') as HTMLInputElement).value;
+
+      if (!mintAddress) {
+        alert('Enter mint address first');
+        return;
+      }
+
+      const confirmed =
+        confirm(
+          'WARNING: This permanently locks metadata updates. Continue?'
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      await lockTokenMetadata(
+        connectedWallet,
+        mintAddress
+      );
+
+      updateMetadataStatus.innerHTML =
+        'Metadata permanently locked.';
+    } catch (error) {
+      console.error(error);
+
+      updateMetadataStatus.innerHTML =
+        'Metadata lock failed.';
+    }
+  }
+);
 
 window.addEventListener(
   'load',
