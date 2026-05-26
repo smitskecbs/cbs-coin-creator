@@ -4,6 +4,7 @@ import {
 
 import {
   generateSigner,
+  createSignerFromKeypair,
   percentAmount,
 } from '@metaplex-foundation/umi';
 
@@ -31,6 +32,9 @@ type CreateUmiTokenParams = {
   decimals: number;
   supply: number;
   vanityPattern?: string;
+  vanityMaxAttempts?: number;
+  shouldStop?: () => boolean;
+  vanitySecretKey?: number[];
 vanityPosition?: 'prefix' | 'suffix' | 'contains' | 'both' | 'bothEnds';
 vanityIgnoreCase?: boolean;
 vanityEndPattern?: string;
@@ -62,18 +66,41 @@ export async function createUmiToken(
     params
   );
 
-let mint =
+let mint: any =
   generateSigner(umi);
 
+if (
+  params.vanitySecretKey &&
+  params.vanitySecretKey.length > 0
+) {
+  const vanityKeypair =
+    umi.eddsa.createKeypairFromSecretKey(
+      new Uint8Array(
+        params.vanitySecretKey
+      )
+    );
+
+  mint =
+    createSignerFromKeypair(
+      umi,
+      vanityKeypair
+    );
+}
+
+/*
 if (
   params.vanityPattern &&
   params.vanityPattern.trim().length > 0
 ) {
+
   console.log(
     'Searching vanity mint:',
     params.vanityPattern
   );
-
+console.log(
+  'Vanity max attempts:',
+  params.vanityMaxAttempts
+);
   const vanityResult =
     await findVanityMint({
       umi,
@@ -89,8 +116,13 @@ if (
       ignoreCase:
         params.vanityIgnoreCase ?? true,
 
-      maxAttempts:
-        100000,
+     maxAttempts:
+     
+  params.vanityMaxAttempts === 0
+    ? Number.MAX_SAFE_INTEGER
+    : params.vanityMaxAttempts ?? 100000,
+    shouldStop:
+  params.shouldStop,
     });
 
   mint =
@@ -103,7 +135,7 @@ if (
     vanityResult.attempts
   );
 }
-
+*/
 const tx =
   await createFungible(
     umi,

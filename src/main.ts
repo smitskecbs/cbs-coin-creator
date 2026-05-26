@@ -44,6 +44,10 @@ import {
   fetchTokenMetadataJson,
 } from './solana/fetchTokenMetadataJson';
 
+import {
+  createSignerFromKeypair,
+} from '@metaplex-foundation/umi';
+
 console.log(
   'updateV1:',
   updateV1
@@ -212,6 +216,25 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
   Ignore uppercase/lowercase
 </label>
+
+<br><br>
+
+<label>
+  Max attempts
+
+  <input
+    id="vanityMaxAttempts"
+    type="number"
+    class="wallet-input"
+    value="100000"
+    min="0"
+    step="1000"
+  />
+</label>
+
+<p style="font-size: 12px; opacity: 0.8;">
+  Use 0 for unlimited search.
+</p>
 
 <p style="font-size: 12px; opacity: 0.8;">
   Warning: vanity mint generation can take longer depending on the pattern.
@@ -488,6 +511,42 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 </div>
 </div>
     </section>
+    <div
+  id="vanitySearchPopup"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  "
+>
+  <div
+    style="
+      background: #111;
+      padding: 24px;
+      border-radius: 16px;
+      width: 320px;
+      text-align: center;
+      border: 1px solid #333;
+    "
+  >
+    <h3>Searching vanity mint...</h3>
+
+    <p id="vanityAttemptsText">
+      Attempts: 0
+    </p>
+
+    <button
+      id="stopVanitySearch"
+      class="primary-btn"
+    >
+      Stop Search
+    </button>
+  </div>
+</div>
   </main>
 `;
 
@@ -508,6 +567,61 @@ const walletBox =
   document.getElementById(
     'progressStatus'
   ) as HTMLDivElement;
+
+  const vanitySearchPopup =
+  document.getElementById(
+    'vanitySearchPopup'
+  ) as HTMLDivElement;
+
+const vanityAttemptsText =
+  document.getElementById(
+    'vanityAttemptsText'
+  ) as HTMLParagraphElement;
+
+const stopVanitySearchButton =
+  document.getElementById(
+    'stopVanitySearch'
+  ) as HTMLButtonElement;
+console.log(
+  'Vanity popup elements:',
+  vanitySearchPopup,
+  vanityAttemptsText,
+  stopVanitySearchButton
+);
+let stopVanitySearch =
+  false;
+  let vanityWorker:
+   Worker | null = null;
+
+   function stopVanityWorker() {
+  if (vanityWorker) {
+    vanityWorker.terminate();
+
+    vanityWorker =
+      null;
+  }
+
+  stopVanitySearch =
+    true;
+
+  vanityAttemptsText.innerHTML =
+  'Search stopped';
+
+setTimeout(() => {
+  vanitySearchPopup.style.display =
+    'none';
+}, 700);
+}
+
+stopVanitySearchButton.addEventListener(
+  'click',
+  () => {
+    vanityAttemptsText.innerHTML =
+      'Stopping search...';
+
+    stopVanityWorker();
+  }
+);
 
 const tokenForm =
   document.getElementById('tokenForm') as HTMLFormElement;
@@ -628,6 +742,158 @@ console.log(
     alert('Wallet connection failed');
   }
 });
+function startVanityWorker() {
+  
+  stopVanitySearch =
+    false;
+
+  vanityWorker =
+    new Worker(
+      new URL(
+        './vanityMint.worker.ts',
+        import.meta.url
+      ),
+      {
+        type: 'module',
+      }
+    );
+
+  vanityWorker.onmessage =
+    (event) => {
+      const data =
+        event.data;
+
+      if (
+        data.type === 'progress'
+      ) {
+        vanityAttemptsText.innerHTML =
+          `Attempts: ${data.attempts}`;
+      }
+
+      if (
+        data.type === 'found'
+      ) {
+        vanityAttemptsText.innerHTML =
+          `Found after ${data.attempts} attempts`;
+
+        vanitySearchPopup.style.display =
+          'none';
+
+        stopVanityWorker();
+      }
+
+      if (
+        data.type === 'notFound'
+      ) {
+        vanityAttemptsText.innerHTML =
+          'No vanity mint found';
+
+        vanitySearchPopup.style.display =
+          'none';
+
+        stopVanityWorker();
+      }
+    };
+}
+function findVanityMintWithWorker() {
+  return new Promise<{
+    address: string;
+    secretKey: number[];
+    attempts: number;
+  }>((resolve, reject) => {
+    stopVanitySearch =
+      false;
+
+    vanityWorker =
+      new Worker(
+        new URL(
+          './vanityMint.worker.ts',
+          import.meta.url
+        ),
+        {
+          type: 'module',
+        }
+      );
+
+    vanityWorker.onmessage =
+      (event) => {
+        const data =
+          event.data;
+
+        if (data.type === 'progress') {
+          vanityAttemptsText.innerHTML =
+            `Attempts: ${data.attempts}`;
+        }
+
+        if (data.type === 'found') {
+          stopVanityWorker();
+
+          resolve({
+            address:
+              data.address,
+
+            secretKey:
+              data.secretKey,
+
+            attempts:
+              data.attempts,
+          });
+        }
+
+        if (data.type === 'notFound') {
+          stopVanityWorker();
+
+          reject(
+            new Error(
+              'Vanity mint not found.'
+            )
+          );
+        }
+      };
+
+    vanityWorker.onerror =
+      () => {
+        stopVanityWorker();
+
+        reject(
+          new Error(
+            'Vanity worker failed.'
+            
+          )
+        );
+      };
+           vanityWorker.onerror =
+      () => {
+        stopVanityWorker();
+
+        reject(
+          new Error(
+            'Vanity worker failed.'
+          )
+        );
+      };
+
+    vanityWorker.postMessage({
+      pattern:
+        (document.getElementById('vanityMintPattern') as HTMLInputElement).value.trim(),
+
+      endPattern:
+        (document.getElementById('vanityMintEndPattern') as HTMLInputElement).value.trim(),
+
+      position:
+        (document.getElementById('vanityMintPosition') as HTMLSelectElement).value,
+
+      ignoreCase:
+        (document.getElementById('vanityIgnoreCase') as HTMLInputElement).checked,
+
+      maxAttempts:
+        Number(
+          (document.getElementById('vanityMaxAttempts') as HTMLInputElement).value
+        ),
+    });
+  });
+}
+  
 
 
 tokenForm.addEventListener('submit', async (event) => {
@@ -751,6 +1017,41 @@ if (tokenLogoFile) {
 );
 progressStatus.innerHTML =
   'Searching vanity mint...';
+if (
+  (document.getElementById('vanityMintPattern') as HTMLInputElement).value.trim()
+) {
+ vanitySearchPopup.style.display =
+  'flex';
+startVanityWorker();
+
+
+  vanityAttemptsText.innerHTML =
+    'Searching vanity mint...';
+}
+let vanityMintResult:
+  any = null;
+
+const vanityPattern =
+  (document.getElementById('vanityMintPattern') as HTMLInputElement).value.trim();
+
+if (vanityPattern) {
+  vanitySearchPopup.style.display =
+    'flex';
+
+  vanityAttemptsText.innerHTML =
+    'Searching vanity mint...';
+
+  vanityMintResult =
+    await findVanityMintWithWorker();
+
+  vanitySearchPopup.style.display =
+    'none';
+
+  console.log(
+    'Worker vanity result:',
+    vanityMintResult
+  );
+}
 
 const umiResult =
   await createUmiToken({
@@ -783,6 +1084,15 @@ vanityPosition:
 
 vanityIgnoreCase:
   (document.getElementById('vanityIgnoreCase') as HTMLInputElement).checked,
+  vanityMaxAttempts:
+  
+  Number(
+    (document.getElementById('vanityMaxAttempts') as HTMLInputElement).value
+  ),
+  shouldStop:
+  () => stopVanitySearch,
+  vanitySecretKey:
+  vanityMintResult?.secretKey,
   });
 
   progressStatus.innerHTML =
@@ -807,6 +1117,7 @@ await mintSupply({
     supply,
 });
 
+
 progressStatus.innerHTML =
   'Revoking authorities...';
 
@@ -829,7 +1140,7 @@ await revokeAuthorities({
 
 progressStatus.innerHTML =
   'Done';
-  
+
 console.log(
   'Umi result:',
   umiResult

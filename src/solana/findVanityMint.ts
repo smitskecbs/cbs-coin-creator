@@ -16,6 +16,7 @@ type FindVanityMintParams = {
   position: VanityPosition;
   ignoreCase: boolean;
   maxAttempts?: number;
+  shouldStop?: () => boolean;
 };
 
 function matchesVanity(
@@ -94,6 +95,13 @@ export async function findVanityMint(
     attempt <= maxAttempts;
     attempt += 1
   ) {
+    if (
+  params.shouldStop?.()
+) {
+  throw new Error(
+    'Vanity search stopped by user.'
+  );
+}
     const mint =
       generateSigner(
         params.umi
@@ -101,6 +109,13 @@ export async function findVanityMint(
 
     const address =
       mint.publicKey.toString();
+     
+      if (attempt % 1000 === 0) {
+  console.log(
+    'Vanity attempts:',
+    attempt
+  );
+}
 
     if (
       matchesVanity(
