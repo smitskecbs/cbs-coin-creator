@@ -100,7 +100,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <section class="hero-card">
       <p class="eyebrow">CBS TOOLKIT</p>
 
-      <h1>CBS Coin Creator</h1>
+      <h1>CBS Token Builder</h1>
 
       <p class="hero-text">
         Create your own Solana token for free.
@@ -151,8 +151,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>Create your token</h2>
       
         <div class="wallet-box">
-  <strong>Advanced: Vanity Mint Address</strong>
-  <br><br>
+  <details class="accordion vanity-accordion">
+    <summary>
+      <span>Advanced: Vanity Mint Address (experienced users)</span>
+      <span class="accordion-chevron" aria-hidden="true">▾</span>
+    </summary>
+
+    <div class="accordion-content">
   Optional. For experienced users. This can take longer and use more CPU.
 
   <br><br>
@@ -208,14 +213,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 <br><br>
 
-<label>
-  <input
-    type="checkbox"
-    id="vanityIgnoreCase"
-  />
-
-  Ignore uppercase/lowercase
-</label>
+<div class="switch-row">
+  <span>Ignore uppercase/lowercase</span>
+  <label class="switch">
+    <input
+      type="checkbox"
+      id="vanityIgnoreCase"
+    />
+    <span class="switch-slider" aria-hidden="true"></span>
+  </label>
+</div>
 
 <br><br>
 
@@ -226,7 +233,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     id="vanityMaxAttempts"
     type="number"
     class="wallet-input"
-    value="100000"
     min="0"
     step="1000"
   />
@@ -239,6 +245,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <p style="font-size: 12px; opacity: 0.8;">
   Warning: vanity mint generation can take longer depending on the pattern.
 </p>
+
+    </div>
+  </details>
 
         <label>
           Token name
@@ -268,6 +277,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     rows="4"
   ></textarea>
 </label>
+<details class="accordion socials-accordion">
+  <summary>
+    <span>Add social links</span>
+    <span class="accordion-chevron" aria-hidden="true">▾</span>
+  </summary>
+  <div class="accordion-content">
 <label>
   Website
   <input
@@ -312,6 +327,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     placeholder="https://facebook.com/yourproject"
   />
 </label>
+  </div>
+</details>
         <div class="form-group">
   <label for="tokenLogo">
     Token logo
@@ -382,162 +399,210 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="tokenStatus" class="wallet-box">
         Token status will appear here
       </div>
-      <div class="token-form">
-  <h2>Manage existing token</h2>
+      <details class="accordion revoke-lock-accordion">
+        <summary>
+          <span>Revoke / lock authorities</span>
+          <span class="accordion-chevron" aria-hidden="true">▾</span>
+        </summary>
+        <div class="accordion-content">
+          <div class="token-form manage-form">
+            <p class="helper-text">
+              Manage authorities for an existing token mint.
+            </p>
 
-  <label>
-    Mint address
-    <input
-      id="manageMintAddress"
-      type="text"
-      placeholder="Paste token mint address"
-    />
-  </label>
-<div id="tokenInfoBox" class="wallet-box">
-  Token info will appear here
-</div>
-  <label class="checkbox-row">
-    <input
-      id="manageRevokeMintAuthority"
-      type="checkbox"
-    />
-    Revoke mint authority
-  </label>
+            <label>
+              Mint address
+              <input
+                id="manageMintAddress"
+                type="text"
+                placeholder="Paste token mint address"
+              />
+            </label>
 
-  <label class="checkbox-row">
-    <input
-      id="manageRevokeFreezeAuthority"
-      type="checkbox"
-    />
-    Revoke freeze authority
-  </label>
+            <div id="tokenInfoBox" class="wallet-box">
+              Token info will appear here
+            </div>
 
-  <button
-    id="manageTokenButton"
-    type="button"
-    class="primary-btn"
-  >
-    Apply Token Tools
-  </button>
+            <label class="checkbox-row">
+              <input
+                id="manageRevokeMintAuthority"
+                type="checkbox"
+              />
+              Revoke mint authority
+            </label>
 
-  <div id="manageTokenStatus" class="wallet-box">
-    Token tool status will appear here
-  </div>
-  <hr />
+            <label class="checkbox-row">
+              <input
+                id="manageRevokeFreezeAuthority"
+                type="checkbox"
+              />
+              Revoke freeze authority
+            </label>
 
-<h2>Update token metadata</h2>
+            <button
+              id="manageTokenButton"
+              type="button"
+              class="primary-btn"
+            >
+              Apply Token Tools
+            </button>
 
-<label>
-  New description
-  <textarea
-    id="updateDescription"
-    placeholder="New token description..."
-    rows="4"
-  ></textarea>
-</label>
+            <div id="manageTokenStatus" class="wallet-box">
+              Token tool status will appear here
+            </div>
 
-<label>
-  New website
-  <input
-    id="updateWebsite"
-    type="text"
-    placeholder="https://yourwebsite.com"
-  />
-</label>
+            <div class="warning-box">
+              <strong>Permanent action.</strong>
+              After locking metadata, logo, description and socials can no longer be changed.
+            </div>
 
-<label>
-  New Telegram
-  <input
-    id="updateTelegram"
-    type="text"
-    placeholder="https://t.me/yourgroup"
-  />
-</label>
+            <label class="checkbox-row">
+              <input
+                id="lockMetadataConfirm"
+                type="checkbox"
+              />
+              I understand this action is permanent and metadata can never be changed again.
+            </label>
 
-<label>
-  New Discord
-  <input
-    id="updateDiscord"
-    type="text"
-    placeholder="https://discord.gg/yourserver"
-  />
-</label>
+            <button
+              id="lockMetadataButton"
+              class="connect-button primary-btn"
+              type="button"
+              disabled
+            >
+              Lock Metadata Permanently
+            </button>
+          </div>
+        </div>
+      </details>
 
-<label>
-  New X / Twitter
-  <input
-    id="updateTwitter"
-    type="text"
-    placeholder="https://x.com/yourproject"
-  />
-</label>
+      <details class="accordion update-metadata-accordion">
+        <summary>
+          <span>Update token metadata</span>
+          <span class="accordion-chevron" aria-hidden="true">▾</span>
+        </summary>
+        <div class="accordion-content">
+          <div class="token-form">
+            <p class="helper-text">
+              Upload new metadata (logo/description/socials) and update the token metadata pointer.
+            </p>
 
-<label class="form-label">
-  New Facebook
-</label>
+            <label>
+              Mint address
+              <input
+                id="updateMintAddress"
+                type="text"
+                placeholder="Paste token mint address"
+              />
+            </label>
 
-<input
-  type="text"
-  id="updateFacebook"
-  class="form-input"
-  placeholder="https://facebook.com/..."
-/>
+            <label>
+              New description
+              <textarea
+                id="updateDescription"
+                placeholder="New token description..."
+                rows="4"
+              ></textarea>
+            </label>
 
-<label class="form-label">
-  New Logo
-</label>
+            <label>
+              New website
+              <input
+                id="updateWebsite"
+                type="text"
+                placeholder="https://yourwebsite.com"
+              />
+            </label>
 
-<input
-  type="file"
-  id="updateLogo"
-  accept="image/*"
-  class="form-input"
-/>
-<button
-  id="updateMetadataButton"
-  type="button"
-  class="primary-btn"
->
-  Upload New Metadata
-</button>
-<button
-  id="lockMetadataButton"
-  class="connect-button"
->
-  Lock Metadata Permanently
-</button>
-<div id="updateMetadataStatus" class="wallet-box">
-  Metadata update status will appear here
-</div>
-</div>
+            <label>
+              New Telegram
+              <input
+                id="updateTelegram"
+                type="text"
+                placeholder="https://t.me/yourgroup"
+              />
+            </label>
+
+            <label>
+              New Discord
+              <input
+                id="updateDiscord"
+                type="text"
+                placeholder="https://discord.gg/yourserver"
+              />
+            </label>
+
+            <label>
+              New X / Twitter
+              <input
+                id="updateTwitter"
+                type="text"
+                placeholder="https://x.com/yourproject"
+              />
+            </label>
+
+            <label>
+              New Facebook
+              <input
+                type="text"
+                id="updateFacebook"
+                placeholder="https://facebook.com/..."
+              />
+            </label>
+
+            <label>
+              New Logo
+              <input
+                type="file"
+                id="updateLogo"
+                accept="image/*"
+              />
+              <img
+                id="updateLogoPreview"
+                class="image-preview"
+                style="display:none;"
+              />
+            </label>
+
+            <button
+              id="updateMetadataButton"
+              type="button"
+              class="primary-btn"
+            >
+              Upload New Metadata
+            </button>
+
+            <div id="updateMetadataStatus" class="wallet-box">
+              Metadata update status will appear here
+            </div>
+          </div>
+        </div>
+      </details>
     </section>
     <div
   id="vanitySearchPopup"
+  class="action-popup-overlay"
   style="
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.72);
     z-index: 9999;
     align-items: center;
     justify-content: center;
+    padding: 16px;
   "
 >
   <div
-    style="
-      background: #111;
-      padding: 24px;
-      border-radius: 16px;
-      width: 320px;
-      text-align: center;
-      border: 1px solid #333;
-    "
+    class="action-popup-card"
   >
-    <h3>Searching vanity mint...</h3>
+    <h3 id="actionPopupTitle">
+  Working...
+</h3>
 
-    <p id="vanityAttemptsText">
-      Attempts: 0
-    </p>
+   <p id="actionPopupText">
+  Preparing...
+</p>
 
     <button
       id="stopVanitySearch"
@@ -573,9 +638,16 @@ const walletBox =
     'vanitySearchPopup'
   ) as HTMLDivElement;
 
-const vanityAttemptsText =
+const actionPopupText =
   document.getElementById(
-    'vanityAttemptsText'
+    'actionPopupText'
+  ) as HTMLParagraphElement;
+  const actionPopupTitle =
+  document.getElementById(
+    'actionPopupTitle'
+  ) as HTMLHeadingElement;
+  document.getElementById(
+    'actionPopupText'
   ) as HTMLParagraphElement;
 
 const stopVanitySearchButton =
@@ -585,13 +657,39 @@ const stopVanitySearchButton =
 console.log(
   'Vanity popup elements:',
   vanitySearchPopup,
-  vanityAttemptsText,
+  actionPopupText,
   stopVanitySearchButton
 );
 let stopVanitySearch =
   false;
   let vanityWorker:
    Worker | null = null;
+
+function showActionPopup(
+  title: string,
+  text: string,
+  options?: { showStopButton?: boolean }
+) {
+  vanitySearchPopup.style.display = 'flex';
+  actionPopupTitle.innerHTML = title;
+  actionPopupText.innerHTML = text;
+  stopVanitySearchButton.style.display =
+    options?.showStopButton ? 'inline-flex' : 'none';
+}
+
+function hideActionPopup(delayMs = 0) {
+  const doHide = () => {
+    vanitySearchPopup.style.display = 'none';
+    stopVanitySearchButton.style.display = 'none';
+  };
+
+  if (delayMs > 0) {
+    setTimeout(doHide, delayMs);
+    return;
+  }
+
+  doHide();
+}
 
    function stopVanityWorker() {
   if (vanityWorker) {
@@ -604,19 +702,15 @@ let stopVanitySearch =
   stopVanitySearch =
     true;
 
-  vanityAttemptsText.innerHTML =
-  'Search stopped';
-
-setTimeout(() => {
-  vanitySearchPopup.style.display =
-    'none';
-}, 700);
+  actionPopupText.innerHTML =
+    'Search stopped';
+  hideActionPopup(1800);
 }
 
 stopVanitySearchButton.addEventListener(
   'click',
   () => {
-    vanityAttemptsText.innerHTML =
+    actionPopupText.innerHTML =
       'Stopping search...';
 
     stopVanityWorker();
@@ -654,6 +748,24 @@ const updateMetadataStatus =
     'lockMetadataButton'
   ) as HTMLButtonElement;
 
+const lockMetadataConfirm =
+  document.getElementById(
+    'lockMetadataConfirm'
+  ) as HTMLInputElement | null;
+
+if (lockMetadataConfirm) {
+  lockMetadataButton.disabled =
+    !lockMetadataConfirm.checked;
+
+  lockMetadataConfirm.addEventListener(
+    'change',
+    () => {
+      lockMetadataButton.disabled =
+        !lockMetadataConfirm.checked;
+    }
+  );
+}
+
 const manageMintAddressInput =
   document.getElementById(
     'manageMintAddress'
@@ -683,6 +795,27 @@ if (tokenLogoInput && tokenLogoPreview) {
 
     tokenLogoPreview.style.display =
       'block';
+  });
+}
+
+const updateLogoInput =
+  document.getElementById('updateLogo') as HTMLInputElement | null;
+
+const updateLogoPreview =
+  document.getElementById('updateLogoPreview') as HTMLImageElement | null;
+
+if (updateLogoInput && updateLogoPreview) {
+  updateLogoInput.addEventListener('change', () => {
+    const file = updateLogoInput.files?.[0];
+    if (!file) {
+      updateLogoPreview.style.display = 'none';
+      updateLogoPreview.removeAttribute('src');
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    updateLogoPreview.src = imageUrl;
+    updateLogoPreview.style.display = 'block';
   });
 }
 connectButton.addEventListener('click', async () => {
@@ -766,14 +899,14 @@ function startVanityWorker() {
       if (
         data.type === 'progress'
       ) {
-        vanityAttemptsText.innerHTML =
+        actionPopupText.innerHTML =
           `Attempts: ${data.attempts}`;
       }
 
       if (
         data.type === 'found'
       ) {
-        vanityAttemptsText.innerHTML =
+        actionPopupText.innerHTML =
           `Found after ${data.attempts} attempts`;
 
         vanitySearchPopup.style.display =
@@ -785,7 +918,7 @@ function startVanityWorker() {
       if (
         data.type === 'notFound'
       ) {
-        vanityAttemptsText.innerHTML =
+        actionPopupText.innerHTML =
           'No vanity mint found';
 
         vanitySearchPopup.style.display =
@@ -821,7 +954,7 @@ function findVanityMintWithWorker() {
           event.data;
 
         if (data.type === 'progress') {
-          vanityAttemptsText.innerHTML =
+          actionPopupText.innerHTML =
             `Attempts: ${data.attempts}`;
         }
 
@@ -955,6 +1088,14 @@ console.log(
 
 if (tokenLogoFile) {
 
+  progressStatus.innerHTML =
+    'Uploading logo...';
+  showActionPopup(
+    'Uploading logo...',
+    'Uploading your logo to IPFS...',
+    { showStopButton: false }
+  );
+
   const uploadedLogo =
     await uploadFileToPinata(
       tokenLogoFile
@@ -967,6 +1108,11 @@ if (tokenLogoFile) {
 
   progressStatus.innerHTML =
   'Uploading metadata...';
+  showActionPopup(
+    'Uploading metadata...',
+    'Uploading token metadata to IPFS...',
+    { showStopButton: false }
+  );
 
   console.log('Social fields:', {
   tokenWebsite,
@@ -1017,17 +1163,12 @@ if (tokenLogoFile) {
 );
 progressStatus.innerHTML =
   'Searching vanity mint...';
-if (
-  (document.getElementById('vanityMintPattern') as HTMLInputElement).value.trim()
-) {
- vanitySearchPopup.style.display =
-  'flex';
-startVanityWorker();
+showActionPopup(
+  'Creating token...',
+  'Preparing transaction...',
+  { showStopButton: false }
+);
 
-
-  vanityAttemptsText.innerHTML =
-    'Searching vanity mint...';
-}
 let vanityMintResult:
   any = null;
 
@@ -1035,17 +1176,14 @@ const vanityPattern =
   (document.getElementById('vanityMintPattern') as HTMLInputElement).value.trim();
 
 if (vanityPattern) {
-  vanitySearchPopup.style.display =
-    'flex';
-
-  vanityAttemptsText.innerHTML =
-    'Searching vanity mint...';
+  showActionPopup(
+    'Searching vanity mint...',
+    'Attempts: 0',
+    { showStopButton: true }
+  );
 
   vanityMintResult =
     await findVanityMintWithWorker();
-
-  vanitySearchPopup.style.display =
-    'none';
 
   console.log(
     'Worker vanity result:',
@@ -1053,6 +1191,11 @@ if (vanityPattern) {
   );
 }
 
+showActionPopup(
+  'Creating token...',
+  'Creating mint and metadata...',
+  { showStopButton: false }
+);
 const umiResult =
   await createUmiToken({
     walletProvider:
@@ -1099,6 +1242,11 @@ vanityIgnoreCase:
   'Minting supply...';
   progressStatus.innerHTML =
   'Creating token account...';
+  showActionPopup(
+    'Minting supply...',
+    'Creating token account and minting supply...',
+    { showStopButton: false }
+  );
 
 await mintSupply({
   walletProvider:
@@ -1120,6 +1268,36 @@ await mintSupply({
 
 progressStatus.innerHTML =
   'Revoking authorities...';
+const revokeMintAfterCreate =
+  (document.getElementById('revokeMintAuthority') as HTMLInputElement).checked;
+const revokeFreezeAfterCreate =
+  (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked;
+
+if (revokeMintAfterCreate && revokeFreezeAfterCreate) {
+  showActionPopup(
+    'Revoking authorities...',
+    'Revoking mint and freeze authorities...',
+    { showStopButton: false }
+  );
+} else if (revokeMintAfterCreate) {
+  showActionPopup(
+    'Revoking mint authority...',
+    'Submitting mint authority revoke...',
+    { showStopButton: false }
+  );
+} else if (revokeFreezeAfterCreate) {
+  showActionPopup(
+    'Revoking freeze authority...',
+    'Submitting freeze authority revoke...',
+    { showStopButton: false }
+  );
+} else {
+  showActionPopup(
+    'Revoking authorities...',
+    'No revoke actions selected. Skipping...',
+    { showStopButton: false }
+  );
+}
 
 await revokeAuthorities({
   walletProvider:
@@ -1132,14 +1310,20 @@ await revokeAuthorities({
     umiResult.mintAddress,
 
   revokeMintAuthority:
-    (document.getElementById('revokeMintAuthority') as HTMLInputElement).checked,
+    revokeMintAfterCreate,
 
   revokeFreezeAuthority:
-    (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked,
+    revokeFreezeAfterCreate,
 });
 
 progressStatus.innerHTML =
   'Done';
+showActionPopup(
+  'Done',
+  'Token created successfully.',
+  { showStopButton: false }
+);
+hideActionPopup(2600);
 
 console.log(
   'Umi result:',
@@ -1313,8 +1497,61 @@ manageTokenButton.addEventListener(
       }
     `;
 
+    const revokeMintRequested =
+      (document.getElementById('manageRevokeMintAuthority') as HTMLInputElement).checked;
+    const revokeFreezeRequested =
+      (document.getElementById('manageRevokeFreezeAuthority') as HTMLInputElement).checked;
+
+    const mintAlreadyRevoked =
+      !tokenInfo.mintAuthority;
+    const freezeAlreadyRevoked =
+      !tokenInfo.freezeAuthority;
+
+    const shouldRevokeMint =
+      revokeMintRequested && !mintAlreadyRevoked;
+    const shouldRevokeFreeze =
+      revokeFreezeRequested && !freezeAlreadyRevoked;
+
+    const feedbackMessages: string[] = [];
+    if (revokeMintRequested && mintAlreadyRevoked) {
+      feedbackMessages.push('Mint authority is already revoked.');
+    }
+    if (revokeFreezeRequested && freezeAlreadyRevoked) {
+      feedbackMessages.push('Freeze authority is already revoked.');
+    }
+
     manageTokenStatus.innerHTML =
       'Applying token tools...';
+
+    if (shouldRevokeMint && shouldRevokeFreeze) {
+      showActionPopup(
+        'Revoking authorities...',
+        'Revoking mint and freeze authorities...',
+        { showStopButton: false }
+      );
+    } else if (shouldRevokeMint) {
+      showActionPopup(
+        'Revoking mint authority...',
+        'Submitting mint authority revoke...',
+        { showStopButton: false }
+      );
+    } else if (shouldRevokeFreeze) {
+      showActionPopup(
+        'Revoking freeze authority...',
+        'Submitting freeze authority revoke...',
+        { showStopButton: false }
+      );
+    } else {
+      showActionPopup(
+        'No revoke actions needed',
+        'Selected authorities are already revoked.',
+        { showStopButton: false }
+      );
+      manageTokenStatus.innerHTML =
+        feedbackMessages.join('<br>') || 'No revoke actions selected.';
+      hideActionPopup(2600);
+      return;
+    }
 
     await revokeAuthorities({
       walletProvider:
@@ -1327,14 +1564,21 @@ manageTokenButton.addEventListener(
         mintAddress,
 
       revokeMintAuthority:
-        (document.getElementById('manageRevokeMintAuthority') as HTMLInputElement).checked,
+        shouldRevokeMint,
 
       revokeFreezeAuthority:
-        (document.getElementById('manageRevokeFreezeAuthority') as HTMLInputElement).checked,
+        shouldRevokeFreeze,
     });
 
+    feedbackMessages.push('Authority update successful.');
     manageTokenStatus.innerHTML =
-      'Token tools applied. Check Explorer.';
+      feedbackMessages.join('<br>');
+    showActionPopup(
+      'Success',
+      'Authority updates completed.',
+      { showStopButton: false }
+    );
+    hideActionPopup(2600);
   }
 );
 
@@ -1342,8 +1586,11 @@ updateMetadataButton.addEventListener(
   'click',
   async () => {
     try {
+      const updateMintInput =
+        document.getElementById('updateMintAddress') as HTMLInputElement | null;
+
       const mintAddress =
-        (document.getElementById('manageMintAddress') as HTMLInputElement).value;
+        (updateMintInput?.value || (document.getElementById('manageMintAddress') as HTMLInputElement).value).trim();
 
       if (!mintAddress) {
         alert('Enter mint address first');
@@ -1383,6 +1630,11 @@ console.log(
 
       updateMetadataStatus.innerHTML =
         'Uploading new metadata...';
+      showActionPopup(
+        'Uploading metadata...',
+        'Uploading updated metadata to IPFS...',
+        { showStopButton: false }
+      );
       let updatedImageUrl = '';
 
 if (updateLogo) {
@@ -1454,11 +1706,23 @@ updateMetadataStatus.innerHTML = `
   Metadata uploaded.<br><br>
   ${uploadedMetadata.metadataUrl}
 `;
+showActionPopup(
+  'Success',
+  'Metadata updated successfully.',
+  { showStopButton: false }
+);
+hideActionPopup(2600);
     } catch (error) {
       console.error(error);
 
       updateMetadataStatus.innerHTML =
         'Metadata update failed';
+      showActionPopup(
+        'Failed',
+        'Metadata update failed.',
+        { showStopButton: false }
+      );
+      hideActionPopup(2600);
     }
   }
 );
@@ -1483,6 +1747,12 @@ updateMetadataStatus.innerHTML = `
         return;
       }
 
+      showActionPopup(
+        'Locking metadata permanently...',
+        'This permanent action is being confirmed on-chain...',
+        { showStopButton: false }
+      );
+
       await lockTokenMetadata(
         connectedWallet,
         mintAddress
@@ -1490,11 +1760,23 @@ updateMetadataStatus.innerHTML = `
 
       updateMetadataStatus.innerHTML =
         'Metadata permanently locked.';
+      showActionPopup(
+        'Metadata locked permanently',
+        'Metadata is now permanently locked.',
+        { showStopButton: false }
+      );
+      hideActionPopup(2800);
     } catch (error) {
       console.error(error);
 
       updateMetadataStatus.innerHTML =
         'Metadata lock failed.';
+      showActionPopup(
+        'Metadata lock failed',
+        'Metadata lock failed.',
+        { showStopButton: false }
+      );
+      hideActionPopup(2800);
     }
   }
 );

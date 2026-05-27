@@ -1,13 +1,21 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
   color: #1a1a1a;
-  background: #ffffff;
+  background: #f5f0e8;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #ffffff;
+  background:
+    radial-gradient(1100px 520px at 30% 0%, rgba(255, 179, 71, 0.16), transparent 60%),
+    radial-gradient(900px 420px at 85% 10%, rgba(237, 199, 137, 0.18), transparent 55%),
+    #f5f0e8;
+}
+
+.action-popup-overlay {
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(3px);
 }
 
 .app-shell {
@@ -28,7 +36,7 @@ body {
 }
 
 .eyebrow {
-  color: #d86f00;
+  color: #ffb347;
   font-weight: 800;
   letter-spacing: 0.18em;
 }
@@ -67,18 +75,26 @@ h1 {
   color: white;
 }
 
+.primary-btn:disabled,
+button.primary-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .secondary-btn {
   border: 1px solid rgba(216, 111, 0, 0.25);
   color: #d86f00;
-  background: white;
+  background: #ffffff;
 }
 .wallet-box {
   margin-top: 24px;
   padding: 18px;
   border-radius: 18px;
-  background: #fafafa;
-  border: 1px solid rgba(216, 111, 0, 0.15);
-  color: #444;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 179, 71, 0.18);
+  color: rgba(241, 241, 246, 0.86);
   word-break: break-word;
 }
 .wallet-panel {
@@ -90,7 +106,7 @@ h1 {
 
 .wallet-panel label {
   font-weight: 800;
-  color: #222;
+  color: #222222;
 }
 
 .wallet-panel select {
@@ -99,14 +115,14 @@ h1 {
   border-radius: 14px;
   border: 1px solid rgba(216, 111, 0, 0.25);
   background: #ffffff;
-  color: #222;
+  color: #222222;
   font-weight: 700;
 }
 
 .vanity-link {
   display: inline-block;
   margin-top: 22px;
-  color: #d86f00;
+  color: #ffb347;
   font-weight: 800;
   text-decoration: none;
 }
@@ -136,14 +152,38 @@ h1 {
   display: grid;
   gap: 7px;
   font-weight: 800;
-  color: #222;
+  color: #222222;
 }
 
 .token-form input {
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid rgba(216, 111, 0, 0.22);
+  background: #ffffff;
+  color: #222222;
   font-size: 16px;
+}
+
+.token-form textarea {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  background: #ffffff;
+  color: #222222;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.token-form h2 {
+  color: #111111;
+}
+
+.helper-text {
+  margin: -6px 0 10px;
+  opacity: 0.9;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #555555;
 }
 
 .checkbox-row {
@@ -156,4 +196,198 @@ h1 {
 .checkbox-row input {
   width: 18px;
   height: 18px;
+}
+
+/* Collapsible accordions (UI-only) */
+details.accordion {
+  margin-top: 18px;
+}
+
+details.accordion > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  background: linear-gradient(135deg, #ffb347, #d86f00);
+  box-shadow: 0 10px 30px rgba(216, 111, 0, 0.16);
+  font-weight: 900;
+  color: #ffffff;
+}
+
+details.accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-content {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(216, 111, 0, 0.16);
+}
+
+.token-form select {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  background: #ffffff;
+  color: #222222;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.accordion-chevron {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 900;
+  transition: transform 180ms ease;
+}
+
+.warning-box {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(216, 111, 0, 0.08);
+  border: 1px solid rgba(216, 111, 0, 0.25);
+  color: #1a1a1a;
+  line-height: 1.35;
+}
+
+/* Switch toggle (uses existing checkbox id) */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 800;
+  color: #222222;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(216, 111, 0, 0.35);
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.switch input:checked + .switch-slider {
+  background: rgba(216, 111, 0, 0.85);
+  border-color: rgba(216, 111, 0, 0.9);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translate(18px, -50%);
+  background: #ffffff;
+}
+
+.image-preview {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(216, 111, 0, 0.25);
+  margin-top: 12px;
+  background: #ffffff;
+}
+
+details.accordion[open] .accordion-chevron {
+  transform: rotate(180deg);
+}
+
+/* Action popup (vanity search) */
+#vanitySearchPopup {
+  /* display is controlled by JS (none <-> flex) */
+}
+
+#vanitySearchPopup .action-popup-card {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 22px;
+  border-radius: 18px;
+  width: 320px;
+  text-align: center;
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(216, 111, 0, 0.06);
+  animation: actionPopupIn 220ms ease-out both;
+}
+
+@keyframes actionPopupIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+#actionPopupTitle {
+  color: #111111;
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+#actionPopupText {
+  color: #444444;
+  margin: 0 0 16px;
+  opacity: 0.95;
+  font-weight: 650;
+}
+
+#vanitySearchPopup .primary-btn {
+  background: linear-gradient(135deg, #ffb347, #d86f00) !important;
+  box-shadow: 0 10px 30px rgba(216, 111, 0, 0.22);
+  padding: 12px 18px;
+}
+
+#vanitySearchPopup .primary-btn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 520px) {
+  details.accordion > summary {
+    padding: 12px 14px;
+  }
+
+  #vanitySearchPopup .action-popup-card {
+    width: min(360px, 100%);
+    padding: 18px;
+  }
 }
