@@ -277,6 +277,45 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     rows="4"
   ></textarea>
 </label>
+<label>
+  Category
+  <select
+  id="tokenTags"
+  multiple
+  size="8"
+>
+    <option value="">No category</option>
+    <option value="meme">Meme</option>
+<option value="defi">DeFi</option>
+<option value="gaming">Gaming</option>
+<option value="utility">Utility</option>
+<option value="ai">AI</option>
+<option value="community">Community</option>
+<option value="finance">Finance</option>
+<option value="nft">NFT</option>
+<option value="social">Social</option>
+<option value="payments">Payments</option>
+<option value="infrastructure">Infrastructure</option>
+<option value="dao">DAO</option>
+<option value="metaverse">Metaverse</option>
+<option value="rwa">RWA</option>
+<option value="privacy">Privacy</option>
+<option value="exchange">Exchange</option>
+<option value="launchpad">Launchpad</option>
+<option value="stablecoin">Stablecoin</option>
+<option value="education">Education</option>
+<option value="music">Music</option>
+<option value="charity">Charity</option>
+<option value="tools">Tools</option>
+<option value="trading">Trading</option>
+<option value="yield">Yield</option>
+<option value="staking">Staking</option>
+    <option value="other">Other</option>
+  </select>
+  <div id="selectedTagsPreview" class="wallet-box">
+  Selected tags will appear here
+</div>
+</label>
 <details class="accordion socials-accordion">
   <summary>
     <span>Add social links</span>
@@ -646,6 +685,35 @@ const actionPopupText =
   document.getElementById(
     'actionPopupTitle'
   ) as HTMLHeadingElement;
+  const tokenTagsInput =
+  document.getElementById(
+    'tokenTags'
+  ) as HTMLSelectElement;
+
+const selectedTagsPreview =
+  document.getElementById(
+    'selectedTagsPreview'
+  ) as HTMLDivElement;
+
+  tokenTagsInput.addEventListener(
+    'change',
+    () => {
+      const selectedTags =
+        Array.from(
+          tokenTagsInput.selectedOptions
+        )
+          .map(
+            option =>
+              option.textContent
+          )
+          .join(', ');
+  
+      selectedTagsPreview.innerHTML =
+        selectedTags ||
+        'Selected tags will appear here';
+    }
+  );
+  
   document.getElementById(
     'actionPopupText'
   ) as HTMLParagraphElement;
@@ -1054,6 +1122,12 @@ tokenForm.addEventListener('submit', async (event) => {
  
   const tokenDescription =
   (document.getElementById('tokenDescription') as HTMLTextAreaElement).value;
+ 
+  const tokenTags =
+  Array.from(
+    (document.getElementById('tokenTags') as HTMLSelectElement).selectedOptions
+  ).map(option => option.value);
+
   const decimals =
     Number(
       (document.getElementById('tokenDecimals') as HTMLInputElement).value
@@ -1121,6 +1195,7 @@ if (tokenLogoFile) {
   tokenTwitter,
   tokenFacebook,
 });
+
   const uploadedMetadata =
     await uploadMetadataToPinata({
       name:
@@ -1132,8 +1207,14 @@ if (tokenLogoFile) {
       description:
   tokenDescription,
 
+  
       image:
         uploadedLogo.imageUrl,
+category:
+  tokenTags[0] || '',
+
+tags:
+  tokenTags,
 
         extensions: {
   website:
@@ -1646,7 +1727,11 @@ if (updateLogo) {
   updatedImageUrl =
     uploadedLogo.imageUrl;
 }
- const uploadedMetadata =
+const tokenTags =
+  Array.from(
+    (document.getElementById('tokenTags') as HTMLSelectElement).selectedOptions
+  ).map(option => option.value);
+const uploadedMetadata =
   await uploadMetadataToPinata({
     name:
       currentMetadata.json.name,
@@ -1659,9 +1744,19 @@ if (updateLogo) {
       currentMetadata.json.description,
 
     image:
-  updatedImageUrl ||
-  currentMetadata.json.image ||
-  '',
+      updatedImageUrl ||
+      currentMetadata.json.image ||
+      '',
+
+    category:
+      tokenTags[0] ||
+      currentMetadata.json.category ||
+      '',
+
+    tags:
+      tokenTags.length > 0
+        ? tokenTags
+        : currentMetadata.json.tags || [],
 
     extensions: {
       website:

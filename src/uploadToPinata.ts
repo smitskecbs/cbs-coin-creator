@@ -66,6 +66,10 @@ type TokenMetadata = {
 
   image: string;
 
+  category?: string;
+
+  tags?: string[];
+
   extensions?: {
     website?: string;
 
@@ -103,6 +107,12 @@ export async function uploadMetadataToPinata(
 
     image:
       metadata.image,
+
+      category:
+  metadata.category,
+
+tags:
+  metadata.tags,
 
     extensions:
       metadata.extensions,
