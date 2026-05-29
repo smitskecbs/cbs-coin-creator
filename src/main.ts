@@ -45,6 +45,10 @@ import {
 } from './solana/fetchTokenMetadataJson';
 
 import {
+  PublicKey,
+} from '@solana/web3.js';
+
+import {
   createSignerFromKeypair,
 } from '@metaplex-foundation/umi';
 
@@ -93,6 +97,42 @@ declare global {
       solana?: WalletProvider;
     };
   }
+}
+
+const TAG_PILL_OPTIONS = [
+  { value: 'meme', label: 'Meme' },
+  { value: 'defi', label: 'DeFi' },
+  { value: 'gaming', label: 'Gaming' },
+  { value: 'utility', label: 'Utility' },
+  { value: 'ai', label: 'AI' },
+  { value: 'community', label: 'Community' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'nft', label: 'NFT' },
+  { value: 'social', label: 'Social' },
+  { value: 'payments', label: 'Payments' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'dao', label: 'DAO' },
+  { value: 'metaverse', label: 'Metaverse' },
+  { value: 'rwa', label: 'RWA' },
+  { value: 'privacy', label: 'Privacy' },
+  { value: 'exchange', label: 'Exchange' },
+  { value: 'launchpad', label: 'Launchpad' },
+  { value: 'stablecoin', label: 'Stablecoin' },
+  { value: 'education', label: 'Education' },
+  { value: 'music', label: 'Music' },
+  { value: 'charity', label: 'Charity' },
+  { value: 'tools', label: 'Tools' },
+  { value: 'trading', label: 'Trading' },
+  { value: 'yield', label: 'Yield' },
+  { value: 'staking', label: 'Staking' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+function renderTagPillsMarkup(): string {
+  return TAG_PILL_OPTIONS.map(
+    ({ value, label }) =>
+      `<button type="button" class="tag-pill" data-value="${value}">${label}</button>`
+  ).join('');
 }
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -277,44 +317,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     rows="4"
   ></textarea>
 </label>
-<label>
-  Category
-  <select
-  id="tokenTags"
-  multiple
-  size="8"
->
-    <option value="">No category</option>
-    <option value="meme">Meme</option>
-<option value="defi">DeFi</option>
-<option value="gaming">Gaming</option>
-<option value="utility">Utility</option>
-<option value="ai">AI</option>
-<option value="community">Community</option>
-<option value="finance">Finance</option>
-<option value="nft">NFT</option>
-<option value="social">Social</option>
-<option value="payments">Payments</option>
-<option value="infrastructure">Infrastructure</option>
-<option value="dao">DAO</option>
-<option value="metaverse">Metaverse</option>
-<option value="rwa">RWA</option>
-<option value="privacy">Privacy</option>
-<option value="exchange">Exchange</option>
-<option value="launchpad">Launchpad</option>
-<option value="stablecoin">Stablecoin</option>
-<option value="education">Education</option>
-<option value="music">Music</option>
-<option value="charity">Charity</option>
-<option value="tools">Tools</option>
-<option value="trading">Trading</option>
-<option value="yield">Yield</option>
-<option value="staking">Staking</option>
-    <option value="other">Other</option>
-  </select>
-  <div id="selectedTagsPreview" class="wallet-box">
-  Selected tags will appear here
-</div>
+<label class="tag-field">
+  Category / tags
+  <div id="tokenTags" class="tag-pills" role="group" aria-label="Category and tags">
+    ${renderTagPillsMarkup()}
+  </div>
+  <div id="selectedTagsPreview" class="wallet-box selected-tags-preview">
+    Selected tags will appear here
+  </div>
 </label>
 <details class="accordion socials-accordion">
   <summary>
@@ -589,6 +599,19 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               />
             </label>
 
+            <label class="tag-field">
+              New category / tags
+              <p class="helper-text">
+                Leave unselected to keep the token&apos;s existing category and tags.
+              </p>
+              <div id="updateTokenTags" class="tag-pills" role="group" aria-label="Update category and tags">
+                ${renderTagPillsMarkup()}
+              </div>
+              <div id="updateSelectedTagsPreview" class="wallet-box selected-tags-preview">
+                Selected update tags will appear here
+              </div>
+            </label>
+
             <label>
               New Logo
               <input
@@ -685,34 +708,106 @@ const actionPopupText =
   document.getElementById(
     'actionPopupTitle'
   ) as HTMLHeadingElement;
-  const tokenTagsInput =
+const tokenTagsContainer =
   document.getElementById(
     'tokenTags'
-  ) as HTMLSelectElement;
+  ) as HTMLDivElement;
 
 const selectedTagsPreview =
   document.getElementById(
     'selectedTagsPreview'
   ) as HTMLDivElement;
 
-  tokenTagsInput.addEventListener(
-    'change',
-    () => {
-      const selectedTags =
-        Array.from(
-          tokenTagsInput.selectedOptions
+function getSelectedTagsFromContainer(
+  container: HTMLElement
+): string[] {
+  return Array.from(
+    container.querySelectorAll(
+      '.tag-pill.is-selected'
+    )
+  )
+    .map(
+      pill =>
+        (pill as HTMLButtonElement).dataset.value || ''
+    )
+    .filter(Boolean);
+}
+
+function bindTagPills(
+  container: HTMLElement,
+  preview: HTMLElement,
+  emptyText: string
+) {
+  const refreshPreview = () => {
+    const labels =
+      Array.from(
+        container.querySelectorAll(
+          '.tag-pill.is-selected'
         )
-          .map(
-            option =>
-              option.textContent
-          )
-          .join(', ');
-  
-      selectedTagsPreview.innerHTML =
-        selectedTags ||
-        'Selected tags will appear here';
+      )
+        .map(
+          pill =>
+            pill.textContent?.trim() || ''
+        )
+        .filter(Boolean);
+
+    preview.innerHTML =
+      labels.length > 0
+        ? labels.join(', ')
+        : emptyText;
+  };
+
+  container.addEventListener(
+    'click',
+    (event) => {
+      const pill =
+        (event.target as HTMLElement).closest(
+          '.tag-pill'
+        ) as HTMLButtonElement | null;
+
+      if (!pill) {
+        return;
+      }
+
+      pill.classList.toggle('is-selected');
+      refreshPreview();
     }
   );
+}
+
+function getSelectedTokenTags(): string[] {
+  return getSelectedTagsFromContainer(
+    tokenTagsContainer
+  );
+}
+
+const updateTokenTagsContainer =
+  document.getElementById(
+    'updateTokenTags'
+  ) as HTMLDivElement;
+
+const updateSelectedTagsPreview =
+  document.getElementById(
+    'updateSelectedTagsPreview'
+  ) as HTMLDivElement;
+
+function getSelectedUpdateTokenTags(): string[] {
+  return getSelectedTagsFromContainer(
+    updateTokenTagsContainer
+  );
+}
+
+bindTagPills(
+  tokenTagsContainer,
+  selectedTagsPreview,
+  'Selected tags will appear here'
+);
+
+bindTagPills(
+  updateTokenTagsContainer,
+  updateSelectedTagsPreview,
+  'Selected update tags will appear here'
+);
   
   document.getElementById(
     'actionPopupText'
@@ -759,13 +854,32 @@ function hideActionPopup(delayMs = 0) {
   doHide();
 }
 
-   function stopVanityWorker() {
+const POPUP_READ_MS = 2800;
+
+const WALLET_CONFIRM_LINES =
+  'Waiting for wallet confirmation...<br><br>Confirm the transaction in your wallet.';
+
+function showWalletConfirmPopup(
+  stepTitle: string
+) {
+  showActionPopup(
+    stepTitle,
+    WALLET_CONFIRM_LINES,
+    { showStopButton: false }
+  );
+}
+
+function terminateVanityWorker() {
   if (vanityWorker) {
     vanityWorker.terminate();
 
     vanityWorker =
       null;
   }
+}
+
+   function stopVanityWorker() {
+  terminateVanityWorker();
 
   stopVanitySearch =
     true;
@@ -822,14 +936,10 @@ const lockMetadataConfirm =
   ) as HTMLInputElement | null;
 
 if (lockMetadataConfirm) {
-  lockMetadataButton.disabled =
-    !lockMetadataConfirm.checked;
-
   lockMetadataConfirm.addEventListener(
     'change',
     () => {
-      lockMetadataButton.disabled =
-        !lockMetadataConfirm.checked;
+      updateActionButtonStates();
     }
   );
 }
@@ -838,6 +948,456 @@ const manageMintAddressInput =
   document.getElementById(
     'manageMintAddress'
   ) as HTMLInputElement;
+
+const updateMintAddressInput =
+  document.getElementById(
+    'updateMintAddress'
+  ) as HTMLInputElement;
+
+let activeMintAddress = '';
+let pendingAction: string | null = null;
+
+function isValidMintAddress(
+  address: string
+): boolean {
+  const trimmed =
+    address.trim();
+
+  if (
+    trimmed.length < 32
+  ) {
+    return false;
+  }
+
+  try {
+    new PublicKey(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function logActionState(
+  action: string
+) {
+  console.log(
+    '[action]',
+    action
+  );
+  console.log(
+    '[state] active mint:',
+    activeMintAddress || '(none)'
+  );
+  console.log(
+    '[state] connected wallet:',
+    connectedWalletAddress || '(none)'
+  );
+}
+
+function showUserError(
+  message: string
+) {
+  alert(message);
+}
+
+function getProviderPublicKey(
+  provider: WalletProvider
+): string | null {
+  const wallet =
+    provider as WalletProvider & {
+      publicKey?: {
+        toString(): string;
+      };
+    };
+
+  if (wallet.publicKey) {
+    return wallet.publicKey.toString();
+  }
+
+  return null;
+}
+
+async function resolveConnectedWallet(
+  action: string
+): Promise<{
+  provider: WalletProvider;
+  address: string;
+} | null> {
+  logActionState(action);
+
+  const walletId =
+    walletSelect.value ||
+    localStorage.getItem(
+      'preferredWallet'
+    ) ||
+    '';
+
+  const provider =
+    getWalletProvider(walletId);
+
+  if (!provider) {
+    showUserError(
+      'Wallet not found. Connect your wallet and try again.'
+    );
+    return null;
+  }
+
+  let address =
+    getProviderPublicKey(
+      provider
+    );
+
+  if (!address) {
+    try {
+      const response =
+        await provider.connect();
+
+      address =
+        response.publicKey.toString();
+    } catch (error) {
+      console.error(error);
+      showUserError(
+        'Could not read the connected wallet. Open your wallet and try again.'
+      );
+      return null;
+    }
+  }
+
+  connectedWallet =
+    provider;
+  connectedWalletAddress =
+    address;
+
+  walletBox.innerHTML = `
+    <strong>Connected wallet:</strong>
+    <br><br>
+    ${connectedWalletAddress}
+  `;
+
+  connectButton.textContent =
+    'Wallet Connected';
+
+  console.log(
+    '[state] connected wallet (fresh):',
+    connectedWalletAddress
+  );
+
+  return {
+    provider,
+    address,
+  };
+}
+
+function syncMintAddressFields(
+  mintAddress: string
+) {
+  manageMintAddressInput.value =
+    mintAddress;
+  updateMintAddressInput.value =
+    mintAddress;
+}
+
+function renderTokenInfoBox(
+  tokenInfo: Awaited<
+    ReturnType<
+      typeof getTokenInfo
+    >
+  >,
+  mintAddress: string
+) {
+  tokenInfoBox.innerHTML = `
+    <strong>Active mint:</strong><br>
+    ${mintAddress}
+
+    <br><br>
+
+    <strong>Supply:</strong><br>
+    ${tokenInfo.formattedSupply}
+
+    <br><br>
+
+    <strong>Decimals:</strong><br>
+    ${tokenInfo.decimals}
+
+    <br><br>
+
+    <strong>Mint Authority:</strong><br>
+    ${
+      tokenInfo.mintAuthority
+        ?? 'Revoked'
+    }
+
+    <br><br>
+
+    <strong>Freeze Authority:</strong><br>
+    ${
+      tokenInfo.freezeAuthority
+        ?? 'Revoked'
+    }
+  `;
+}
+
+async function refreshActiveTokenInfo(
+  mintAddress?: string
+) {
+  const mint =
+    (mintAddress ||
+      activeMintAddress).trim();
+
+  if (
+    !isValidMintAddress(mint)
+  ) {
+    return;
+  }
+
+  try {
+    const tokenInfo =
+      await getTokenInfo(mint);
+
+    renderTokenInfoBox(
+      tokenInfo,
+      mint
+    );
+
+    console.log(
+      '[state] mint authority:',
+      tokenInfo.mintAuthority
+        ?? 'Revoked'
+    );
+    console.log(
+      '[state] freeze authority:',
+      tokenInfo.freezeAuthority
+        ?? 'Revoked'
+    );
+
+    try {
+      const metadata =
+        await fetchTokenMetadataJson(
+          mint
+        );
+
+      console.log(
+        '[state] update authority:',
+        metadata.updateAuthority
+          ?? 'Unknown'
+      );
+      console.log(
+        '[state] metadata uri:',
+        metadata.onChainUri
+      );
+    } catch (metadataError) {
+      console.warn(
+        '[state] metadata refresh skipped:',
+        metadataError
+      );
+    }
+  } catch {
+    tokenInfoBox.innerHTML =
+      'Token not found. Check the mint address.';
+  }
+}
+
+async function setActiveMint(
+  mintAddress: string,
+  options?: {
+    reloadInfo?: boolean;
+  }
+) {
+  const trimmed =
+    mintAddress.trim();
+
+  activeMintAddress =
+    trimmed;
+  syncMintAddressFields(
+    trimmed
+  );
+
+  console.log(
+    '[state] active mint set:',
+    activeMintAddress || '(cleared)'
+  );
+
+  updateActionButtonStates();
+
+  if (
+    options?.reloadInfo &&
+    isValidMintAddress(trimmed)
+  ) {
+    await refreshActiveTokenInfo(
+      trimmed
+    );
+  } else if (
+    !isValidMintAddress(trimmed)
+  ) {
+    tokenInfoBox.innerHTML =
+      trimmed.length > 0
+        ? 'Enter a valid mint address.'
+        : 'Token info will appear here';
+  }
+}
+
+function getMintForAction(
+  source:
+    | 'manage'
+    | 'update'
+    | 'lock'
+): string | null {
+  const mint =
+    source === 'update'
+      ? updateMintAddressInput.value.trim()
+      : manageMintAddressInput.value.trim();
+
+  const resolved =
+    mint ||
+    activeMintAddress.trim();
+
+  if (
+    !isValidMintAddress(
+      resolved
+    )
+  ) {
+    showUserError(
+      'Enter a valid mint address before continuing.'
+    );
+    return null;
+  }
+
+  if (
+    resolved !==
+    activeMintAddress
+  ) {
+    setActiveMint(resolved);
+  }
+
+  return resolved;
+}
+
+function beginAction(
+  action: string
+): boolean {
+  if (pendingAction) {
+    showUserError(
+      `Another action is already in progress (${pendingAction}). Wait for it to finish.`
+    );
+    return false;
+  }
+
+  pendingAction =
+    action;
+  updateActionButtonStates();
+  logActionState(action);
+  return true;
+}
+
+function endAction() {
+  pendingAction =
+    null;
+  updateActionButtonStates();
+}
+
+function updateActionButtonStates() {
+  const manageMint =
+    (
+      manageMintAddressInput.value.trim() ||
+      activeMintAddress
+    ).trim();
+  const updateMint =
+    (
+      updateMintAddressInput.value.trim() ||
+      activeMintAddress
+    ).trim();
+  const busy =
+    pendingAction !== null;
+  const lockConfirmed =
+    lockMetadataConfirm?.checked ??
+    false;
+
+  manageTokenButton.disabled =
+    !isValidMintAddress(
+      manageMint
+    ) || busy;
+  updateMetadataButton.disabled =
+    !isValidMintAddress(
+      updateMint
+    ) || busy;
+  lockMetadataButton.disabled =
+    !isValidMintAddress(
+      manageMint
+    ) ||
+    busy ||
+    !lockConfirmed;
+}
+
+function bindMintAddressInputs() {
+  const handleMintInput =
+    async () => {
+      const manageValue =
+        manageMintAddressInput.value.trim();
+      const updateValue =
+        updateMintAddressInput.value.trim();
+      const nextMint =
+        manageValue ||
+        updateValue;
+
+      if (
+        !nextMint
+      ) {
+        activeMintAddress =
+          '';
+        tokenInfoBox.innerHTML =
+          'Token info will appear here';
+        updateActionButtonStates();
+        return;
+      }
+
+      if (
+        manageValue &&
+        manageValue !==
+          updateMintAddressInput.value
+      ) {
+        updateMintAddressInput.value =
+          manageValue;
+      }
+
+      if (
+        updateValue &&
+        updateValue !==
+          manageMintAddressInput.value
+      ) {
+        manageMintAddressInput.value =
+          updateValue;
+      }
+
+      activeMintAddress =
+        nextMint;
+      updateActionButtonStates();
+
+      if (
+        isValidMintAddress(
+          nextMint
+        )
+      ) {
+        await refreshActiveTokenInfo(
+          nextMint
+        );
+      } else {
+        tokenInfoBox.innerHTML =
+          'Enter a valid mint address.';
+      }
+    };
+
+  manageMintAddressInput.addEventListener(
+    'input',
+    handleMintInput
+  );
+  updateMintAddressInput.addEventListener(
+    'input',
+    handleMintInput
+  );
+}
+
+bindMintAddressInputs();
+updateActionButtonStates();
   const tokenLogoInput =
   document.getElementById('tokenLogo') as HTMLInputElement | null;
 
@@ -1027,7 +1587,7 @@ function findVanityMintWithWorker() {
         }
 
         if (data.type === 'found') {
-          stopVanityWorker();
+          terminateVanityWorker();
 
           resolve({
             address:
@@ -1042,7 +1602,9 @@ function findVanityMintWithWorker() {
         }
 
         if (data.type === 'notFound') {
-          stopVanityWorker();
+          terminateVanityWorker();
+          stopVanitySearch =
+            true;
 
           reject(
             new Error(
@@ -1054,18 +1616,9 @@ function findVanityMintWithWorker() {
 
     vanityWorker.onerror =
       () => {
-        stopVanityWorker();
-
-        reject(
-          new Error(
-            'Vanity worker failed.'
-            
-          )
-        );
-      };
-           vanityWorker.onerror =
-      () => {
-        stopVanityWorker();
+        terminateVanityWorker();
+        stopVanitySearch =
+          true;
 
         reject(
           new Error(
@@ -1100,17 +1653,48 @@ function findVanityMintWithWorker() {
 tokenForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  if (!connectedWallet) {
-    alert('Connect wallet first');
+  if (
+    !beginAction(
+      'create-token'
+    )
+  ) {
     return;
   }
+
+  try {
+    const walletSession =
+      await resolveConnectedWallet(
+        'create-token'
+      );
+
+    if (!walletSession) {
+      showActionPopup(
+        'Wallet required',
+        'Connect your wallet before creating a token.',
+        { showStopButton: false }
+      );
+      hideActionPopup(POPUP_READ_MS);
+      return;
+    }
+
+    const writeWallet =
+      walletSession.provider;
+    const writeWalletAddress =
+      walletSession.address;
+
   if (
   networkSelect.value === 'mainnet' &&
   !ENABLE_MAINNET
 ) {
-  alert(
+  showUserError(
     'Mainnet minting is locked for now. Test on devnet first.'
   );
+  showActionPopup(
+    'Mainnet locked',
+    'Mainnet minting is locked for now. Test on devnet first.',
+    { showStopButton: false }
+  );
+  hideActionPopup(POPUP_READ_MS);
 
   return;
 }
@@ -1124,9 +1708,7 @@ tokenForm.addEventListener('submit', async (event) => {
   (document.getElementById('tokenDescription') as HTMLTextAreaElement).value;
  
   const tokenTags =
-  Array.from(
-    (document.getElementById('tokenTags') as HTMLSelectElement).selectedOptions
-  ).map(option => option.value);
+    getSelectedTokenTags();
 
   const decimals =
     Number(
@@ -1272,15 +1854,13 @@ if (vanityPattern) {
   );
 }
 
-showActionPopup(
-  'Creating token...',
-  'Creating mint and metadata...',
-  { showStopButton: false }
+showWalletConfirmPopup(
+  'Creating token...'
 );
 const umiResult =
   await createUmiToken({
     walletProvider:
-      connectedWallet,
+      writeWallet,
 
     metadataUri:
       uploadedMetadata.metadataUrl,
@@ -1323,18 +1903,16 @@ vanityIgnoreCase:
   'Minting supply...';
   progressStatus.innerHTML =
   'Creating token account...';
-  showActionPopup(
-    'Minting supply...',
-    'Creating token account and minting supply...',
-    { showStopButton: false }
+  showWalletConfirmPopup(
+    'Minting supply...'
   );
 
 await mintSupply({
   walletProvider:
-    connectedWallet,
+    writeWallet,
 
   walletAddress:
-    connectedWalletAddress,
+    writeWalletAddress,
 
   mintAddress:
     umiResult.mintAddress,
@@ -1355,22 +1933,16 @@ const revokeFreezeAfterCreate =
   (document.getElementById('revokeFreezeAuthority') as HTMLInputElement).checked;
 
 if (revokeMintAfterCreate && revokeFreezeAfterCreate) {
-  showActionPopup(
-    'Revoking authorities...',
-    'Revoking mint and freeze authorities...',
-    { showStopButton: false }
+  showWalletConfirmPopup(
+    'Revoking authorities...'
   );
 } else if (revokeMintAfterCreate) {
-  showActionPopup(
-    'Revoking mint authority...',
-    'Submitting mint authority revoke...',
-    { showStopButton: false }
+  showWalletConfirmPopup(
+    'Revoking mint authority...'
   );
 } else if (revokeFreezeAfterCreate) {
-  showActionPopup(
-    'Revoking freeze authority...',
-    'Submitting freeze authority revoke...',
-    { showStopButton: false }
+  showWalletConfirmPopup(
+    'Revoking freeze authority...'
   );
 } else {
   showActionPopup(
@@ -1382,10 +1954,10 @@ if (revokeMintAfterCreate && revokeFreezeAfterCreate) {
 
 await revokeAuthorities({
   walletProvider:
-    connectedWallet,
+    writeWallet,
 
   walletAddress:
-    connectedWalletAddress,
+    writeWalletAddress,
 
   mintAddress:
     umiResult.mintAddress,
@@ -1404,7 +1976,7 @@ showActionPopup(
   'Token created successfully.',
   { showStopButton: false }
 );
-hideActionPopup(2600);
+hideActionPopup(POPUP_READ_MS);
 
 console.log(
   'Umi result:',
@@ -1425,7 +1997,7 @@ if (tokenStatus) {
     <br><br>
 
     <strong>
-      Mint address:
+      Active mint:
     </strong><br>
     ${umiResult.mintAddress}
 
@@ -1437,6 +2009,13 @@ if (tokenStatus) {
     ${uploadedMetadata.metadataUrl}
   `;
 }
+
+await setActiveMint(
+  umiResult.mintAddress,
+  {
+    reloadInfo: true,
+  }
+);
  
  //await createToken({
      // network:
@@ -1473,110 +2052,87 @@ console.log(
   'Metadata URI ready:',
   uploadedMetadata.metadataUrl
 );
+} else {
+  showUserError(
+    'Please select a token logo before creating.'
+  );
+  showActionPopup(
+    'Logo required',
+    'Please select a token logo before creating.',
+    { showStopButton: false }
+  );
+  hideActionPopup(POPUP_READ_MS);
+}
+} catch (error) {
+  console.error(error);
+  progressStatus.innerHTML =
+    'Token creation failed';
+  showActionPopup(
+    'Failed',
+    'Token creation failed. Check your wallet and try again.',
+    { showStopButton: false }
+  );
+  hideActionPopup(POPUP_READ_MS);
+} finally {
+  endAction();
 }
 });
-manageMintAddressInput.addEventListener(
-  'input',
+manageTokenButton.addEventListener(
+  'click',
   async () => {
-    const mintAddress =
-      manageMintAddressInput.value.trim();
-
     if (
-      mintAddress.length < 32
+      !beginAction(
+        'revoke-authorities'
+      )
     ) {
-      tokenInfoBox.innerHTML =
-        'Token info will appear here';
-
       return;
     }
 
     try {
+      console.log(
+        'Apply Token Tools clicked'
+      );
+
+      const walletSession =
+        await resolveConnectedWallet(
+          'revoke-authorities'
+        );
+
+      if (!walletSession) {
+        showActionPopup(
+          'Wallet required',
+          'Connect your wallet before revoking authorities.',
+          { showStopButton: false }
+        );
+        hideActionPopup(POPUP_READ_MS);
+        return;
+      }
+
+      const mintAddress =
+        getMintForAction(
+          'manage'
+        );
+
+      if (!mintAddress) {
+        hideActionPopup();
+        return;
+      }
+
+      showActionPopup(
+        'Applying token tools...',
+        'Preparing authority updates...',
+        { showStopButton: false }
+      );
+
       const tokenInfo =
         await getTokenInfo(
           mintAddress
         );
 
-      tokenInfoBox.innerHTML = `
-        <strong>Supply:</strong><br>
-        ${tokenInfo.formattedSupply}
-
-        <br><br>
-
-        <strong>Decimals:</strong><br>
-        ${tokenInfo.decimals}
-
-        <br><br>
-
-        <strong>Mint Authority:</strong><br>
-        ${
-          tokenInfo.mintAuthority
-            ?? 'Revoked'
-        }
-
-        <br><br>
-
-        <strong>Freeze Authority:</strong><br>
-        ${
-          tokenInfo.freezeAuthority
-            ?? 'Revoked'
-        }
-      `;
-    } catch {
-      tokenInfoBox.innerHTML =
-        'Token not found';
-    }
-  }
-);
-manageTokenButton.addEventListener(
-  'click',
-  async () => {
-    console.log(
-      'Apply Token Tools clicked'
-    );
-
-    if (!connectedWallet) {
-      alert('Connect wallet first');
-      return;
-    }
-
-    const mintAddress =
-      (document.getElementById('manageMintAddress') as HTMLInputElement).value;
-
-    if (!mintAddress) {
-      alert('Enter a mint address');
-      return;
-    }
-
-    const tokenInfo =
-      await getTokenInfo(
+      renderTokenInfoBox(
+        tokenInfo,
         mintAddress
       );
-
-    tokenInfoBox.innerHTML = `
-      <strong>Supply:</strong><br>
-      ${tokenInfo.formattedSupply}
-
-      <br><br>
-
-      <strong>Decimals:</strong><br>
-      ${tokenInfo.decimals}
-
-      <br><br>
-
-      <strong>Mint Authority:</strong><br>
-      ${
-        tokenInfo.mintAuthority
-          ?? 'Revoked'
-      }
-
-      <br><br>
-
-      <strong>Freeze Authority:</strong><br>
-      ${
-        tokenInfo.freezeAuthority
-          ?? 'Revoked'
-      }
-    `;
 
     const revokeMintRequested =
       (document.getElementById('manageRevokeMintAuthority') as HTMLInputElement).checked;
@@ -1605,22 +2161,16 @@ manageTokenButton.addEventListener(
       'Applying token tools...';
 
     if (shouldRevokeMint && shouldRevokeFreeze) {
-      showActionPopup(
-        'Revoking authorities...',
-        'Revoking mint and freeze authorities...',
-        { showStopButton: false }
+      showWalletConfirmPopup(
+        'Revoking authorities...'
       );
     } else if (shouldRevokeMint) {
-      showActionPopup(
-        'Revoking mint authority...',
-        'Submitting mint authority revoke...',
-        { showStopButton: false }
+      showWalletConfirmPopup(
+        'Revoking mint authority...'
       );
     } else if (shouldRevokeFreeze) {
-      showActionPopup(
-        'Revoking freeze authority...',
-        'Submitting freeze authority revoke...',
-        { showStopButton: false }
+      showWalletConfirmPopup(
+        'Revoking freeze authority...'
       );
     } else {
       showActionPopup(
@@ -1630,16 +2180,16 @@ manageTokenButton.addEventListener(
       );
       manageTokenStatus.innerHTML =
         feedbackMessages.join('<br>') || 'No revoke actions selected.';
-      hideActionPopup(2600);
+      hideActionPopup(POPUP_READ_MS);
       return;
     }
 
     await revokeAuthorities({
       walletProvider:
-        connectedWallet,
+        walletSession.provider,
 
       walletAddress:
-        connectedWalletAddress,
+        walletSession.address,
 
       mintAddress:
         mintAddress,
@@ -1654,27 +2204,74 @@ manageTokenButton.addEventListener(
     feedbackMessages.push('Authority update successful.');
     manageTokenStatus.innerHTML =
       feedbackMessages.join('<br>');
+    await setActiveMint(
+      mintAddress,
+      {
+        reloadInfo: true,
+      }
+    );
     showActionPopup(
       'Success',
       'Authority updates completed.',
       { showStopButton: false }
     );
-    hideActionPopup(2600);
+    hideActionPopup(POPUP_READ_MS);
+    } catch (error) {
+      console.error(error);
+      manageTokenStatus.innerHTML =
+        'Authority update failed.';
+      showActionPopup(
+        'Failed',
+        'Authority update failed. Check your wallet and mint address.',
+        { showStopButton: false }
+      );
+      hideActionPopup(POPUP_READ_MS);
+    } finally {
+      endAction();
+    }
   }
 );
 
 updateMetadataButton.addEventListener(
   'click',
   async () => {
+    if (
+      !beginAction(
+        'update-metadata'
+      )
+    ) {
+      return;
+    }
+
     try {
-      const updateMintInput =
-        document.getElementById('updateMintAddress') as HTMLInputElement | null;
+      showActionPopup(
+        'Updating metadata...',
+        'Preparing metadata update...',
+        { showStopButton: false }
+      );
+
+      const walletSession =
+        await resolveConnectedWallet(
+          'update-metadata'
+        );
+
+      if (!walletSession) {
+        showActionPopup(
+          'Wallet required',
+          'Connect your wallet before updating metadata.',
+          { showStopButton: false }
+        );
+        hideActionPopup(POPUP_READ_MS);
+        return;
+      }
 
       const mintAddress =
-        (updateMintInput?.value || (document.getElementById('manageMintAddress') as HTMLInputElement).value).trim();
+        getMintForAction(
+          'update'
+        );
 
       if (!mintAddress) {
-        alert('Enter mint address first');
+        hideActionPopup();
         return;
       }
       
@@ -1727,10 +2324,8 @@ if (updateLogo) {
   updatedImageUrl =
     uploadedLogo.imageUrl;
 }
-const tokenTags =
-  Array.from(
-    (document.getElementById('tokenTags') as HTMLSelectElement).selectedOptions
-  ).map(option => option.value);
+const updateTags =
+  getSelectedUpdateTokenTags();
 const uploadedMetadata =
   await uploadMetadataToPinata({
     name:
@@ -1749,13 +2344,13 @@ const uploadedMetadata =
       '',
 
     category:
-      tokenTags[0] ||
+      updateTags[0] ||
       currentMetadata.json.category ||
       '',
 
     tags:
-      tokenTags.length > 0
-        ? tokenTags
+      updateTags.length > 0
+        ? updateTags
         : currentMetadata.json.tags || [],
 
     extensions: {
@@ -1786,9 +2381,13 @@ console.log(
   uploadedMetadata
 );
 
+showWalletConfirmPopup(
+  'Updating token metadata...'
+);
+
 await updateTokenMetadata({
   walletProvider:
-    connectedWallet,
+    walletSession.provider,
 
   mintAddress:
     mintAddress,
@@ -1801,12 +2400,18 @@ updateMetadataStatus.innerHTML = `
   Metadata uploaded.<br><br>
   ${uploadedMetadata.metadataUrl}
 `;
+await setActiveMint(
+  mintAddress,
+  {
+    reloadInfo: true,
+  }
+);
 showActionPopup(
   'Success',
   'Metadata updated successfully.',
   { showStopButton: false }
 );
-hideActionPopup(2600);
+hideActionPopup(POPUP_READ_MS);
     } catch (error) {
       console.error(error);
 
@@ -1817,19 +2422,45 @@ hideActionPopup(2600);
         'Metadata update failed.',
         { showStopButton: false }
       );
-      hideActionPopup(2600);
+      hideActionPopup(POPUP_READ_MS);
+    } finally {
+      endAction();
     }
   }
 );
  lockMetadataButton.addEventListener(
   'click',
   async () => {
+    if (
+      !beginAction(
+        'lock-metadata'
+      )
+    ) {
+      return;
+    }
+
     try {
+      const walletSession =
+        await resolveConnectedWallet(
+          'lock-metadata'
+        );
+
+      if (!walletSession) {
+        showActionPopup(
+          'Wallet required',
+          'Connect your wallet before locking metadata.',
+          { showStopButton: false }
+        );
+        hideActionPopup(POPUP_READ_MS);
+        return;
+      }
+
       const mintAddress =
-        (document.getElementById('manageMintAddress') as HTMLInputElement).value;
+        getMintForAction(
+          'lock'
+        );
 
       if (!mintAddress) {
-        alert('Enter mint address first');
         return;
       }
 
@@ -1842,25 +2473,29 @@ hideActionPopup(2600);
         return;
       }
 
-      showActionPopup(
-        'Locking metadata permanently...',
-        'This permanent action is being confirmed on-chain...',
-        { showStopButton: false }
+      showWalletConfirmPopup(
+        'Locking metadata permanently...'
       );
 
       await lockTokenMetadata(
-        connectedWallet,
+        walletSession.provider,
         mintAddress
       );
 
       updateMetadataStatus.innerHTML =
         'Metadata permanently locked.';
+      await setActiveMint(
+        mintAddress,
+        {
+          reloadInfo: true,
+        }
+      );
       showActionPopup(
         'Metadata locked permanently',
         'Metadata is now permanently locked.',
         { showStopButton: false }
       );
-      hideActionPopup(2800);
+      hideActionPopup(POPUP_READ_MS);
     } catch (error) {
       console.error(error);
 
@@ -1871,7 +2506,9 @@ hideActionPopup(2600);
         'Metadata lock failed.',
         { showStopButton: false }
       );
-      hideActionPopup(2800);
+      hideActionPopup(POPUP_READ_MS);
+    } finally {
+      endAction();
     }
   }
 );

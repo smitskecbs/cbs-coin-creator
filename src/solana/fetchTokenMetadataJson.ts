@@ -49,6 +49,14 @@ export async function fetchTokenMetadataJson(
     onChainUri:
       metadata.uri,
 
+    isMutable:
+      metadata.isMutable,
+
+    updateAuthority:
+      metadata.updateAuthority
+        ? metadata.updateAuthority.toString()
+        : null,
+
     json,
   };
 }
