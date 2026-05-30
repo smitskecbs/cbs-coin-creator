@@ -2,6 +2,9 @@ import './polyfills';
 
 import './style.css';
 
+import logoUrl from './assets/logo.png';
+import tokenBuilderBannerUrl from './assets/tokenbuilder.png';
+
 import {
   getWalletProvider,
 } from './solana/wallets';
@@ -141,12 +144,52 @@ function renderTagPillsMarkup(): string {
   ).join('');
 }
 
+function setSiteFavicon() {
+  let link =
+    document.querySelector<HTMLLinkElement>(
+      'link[rel="icon"]'
+    );
+
+  if (!link) {
+    link =
+      document.createElement(
+        'link'
+      );
+    link.rel =
+      'icon';
+    document.head.appendChild(
+      link
+    );
+  }
+
+  link.type =
+    'image/png';
+  link.href =
+    logoUrl;
+}
+
+setSiteFavicon();
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="app-shell">
-    <section class="hero-card">
-      <p class="eyebrow">CBS TOOLKIT</p>
+    <img
+      class="site-banner"
+      src="${tokenBuilderBannerUrl}"
+      alt="CBS Token Builder"
+    />
 
-      <h1>CBS Token Builder</h1>
+    <section class="hero-card">
+      <header class="site-header">
+        <img
+          class="site-logo"
+          src="${logoUrl}"
+          alt="CBS logo"
+        />
+
+        <p class="eyebrow">CBS TOOLKIT</p>
+
+        <h1>CBS Token Builder</h1>
+      </header>
 
       <p class="hero-text">
         Create your own Solana token for free.

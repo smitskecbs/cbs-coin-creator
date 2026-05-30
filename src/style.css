@@ -27,6 +27,31 @@ body {
   padding: 24px;
 }
 
+.site-banner {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px rgba(216, 111, 0, 0.1);
+}
+
+.site-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.site-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+
 .hero-card {
   max-width: 720px;
   padding: 42px;

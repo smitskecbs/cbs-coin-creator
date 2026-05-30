@@ -9,8 +9,8 @@
 
     <link
       rel="icon"
-      type="image/svg+xml"
-      href="/favicon.svg"
+      type="image/png"
+      href="/logo.png"
     />
 
     <meta
@@ -19,110 +19,12 @@
     />
 
     <title>
-      CBS Coin Creator
+      CBS Token Builder
     </title>
   </head>
 
   <body>
-    <div id="app">
-
-      <div class="creator-container">
-
-        <h1>
-          CBS Coin Creator
-        </h1>
-
-        <div class="form-group">
-          <label for="tokenName">
-            Token name
-          </label>
-
-          <input
-            id="tokenName"
-            type="text"
-            placeholder="My Token"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="tokenSymbol">
-            Symbol
-          </label>
-
-          <input
-            id="tokenSymbol"
-            type="text"
-            placeholder="MTK"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="tokenLogo">
-            Token logo
-          </label>
-
-          <input
-            type="file"
-            id="tokenLogo"
-            accept="image/png,image/jpeg,image/webp"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="tokenDecimals">
-            Decimals
-          </label>
-
-          <input
-            id="tokenDecimals"
-            type="number"
-            value="9"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="tokenSupply">
-            Initial supply
-          </label>
-
-          <input
-            id="tokenSupply"
-            type="number"
-            value="1000000"
-          />
-        </div>
-
-        <div class="form-group">
-          <label>
-            <input
-              type="checkbox"
-              id="revokeMintAuthority"
-            />
-
-            Revoke mint authority
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label>
-            <input
-              type="checkbox"
-              id="revokeFreezeAuthority"
-            />
-
-            Revoke freeze authority
-          </label>
-        </div>
-
-        <button id="createTokenButton">
-          Create Token
-        </button>
-
-        <div id="tokenStatus"></div>
-
-      </div>
-
-    </div>
+    <div id="app"></div>
 
     <script
       type="module"
