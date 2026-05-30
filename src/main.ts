@@ -17,6 +17,7 @@ import {
 import {
   ENABLE_MAINNET,
   getExplorerTokenUrl,
+  getRpc,
   isMainnetRpcConfigured,
   MAINNET_RPC_NOT_CONFIGURED_MESSAGE,
   type SolanaNetwork,
@@ -52,6 +53,8 @@ import {
 } from './solana/fetchTokenMetadataJson';
 
 import {
+  Connection,
+  LAMPORTS_PER_SOL,
   PublicKey,
 } from '@solana/web3.js';
 
@@ -187,8 +190,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         />
 
         <p class="eyebrow">CBS TOOLKIT</p>
-
-        <h1>CBS Token Builder</h1>
       </header>
 
       <p class="hero-text">
@@ -197,9 +198,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </p>
 
       <div class="network-panel">
-        <label for="networkSelect">Network</label>
+        <label
+          class="network-panel-label"
+          for="networkSelect"
+        >
+          Network
+        </label>
 
-        <select id="networkSelect">
+        <select
+          id="networkSelect"
+          class="network-select"
+        >
           <option value="devnet">Devnet</option>
           <option value="mainnet">Mainnet</option>
         </select>
@@ -2037,9 +2046,94 @@ function buildCreateUmiTokenParams(
   };
 }
 
+const PHANTOM_PREFLIGHT_MIN_LAMPORTS =
+  600_000_000;
+
+const MAINNET_BALANCE_WARNING =
+  'Your wallet has less than 0.6 SOL. Phantom may block token creation because of its safety reserve. This is not a CBS fee. Only Solana/Metaplex rent and network fees are spent.';
+
+const DEVNET_BALANCE_WARNING =
+  "Your devnet wallet needs more devnet SOL for Phantom's safety reserve. Use the Solana devnet faucet.";
+
+function showPreflightBalanceWarning(
+  network: SolanaNetwork,
+  balanceSol: number
+) {
+  const message =
+    network ===
+    'mainnet'
+      ? MAINNET_BALANCE_WARNING
+      : DEVNET_BALANCE_WARNING;
+
+  progressStatus.className =
+    'wallet-box preflight-balance-warning';
+  progressStatus.innerHTML =
+    message;
+
+  showUserError(message);
+  showActionPopup(
+    network ===
+      'mainnet'
+      ? 'Low SOL balance'
+      : 'Low devnet SOL',
+    `${message}<br><br>Current balance: ${balanceSol.toFixed(4)} SOL`,
+    {
+      showStopButton: false,
+      state: 'error',
+    }
+  );
+  hideActionPopup(
+    POPUP_READ_MS
+  );
+}
+
+async function ensureWalletBalanceForTokenCreation(
+  network: SolanaNetwork,
+  walletAddress: string
+): Promise<boolean> {
+  const connection =
+    new Connection(
+      getRpc(network),
+      'confirmed'
+    );
+
+  const balance =
+    await connection.getBalance(
+      new PublicKey(
+        walletAddress
+      )
+    );
+
+  if (
+    balance >=
+    PHANTOM_PREFLIGHT_MIN_LAMPORTS
+  ) {
+    return true;
+  }
+
+  showPreflightBalanceWarning(
+    network,
+    balance /
+      LAMPORTS_PER_SOL
+  );
+
+  return false;
+}
+
 async function createUmiTokenFromPendingVanity(
   pending: PendingVanityTokenCreate
 ) {
+  if (
+    !(await ensureWalletBalanceForTokenCreation(
+      pending.network,
+      pending.writeWalletAddress
+    ))
+  ) {
+    throw new Error(
+      'Insufficient wallet balance for token creation.'
+    );
+  }
+
   showVanityWalletConfirmPopup(
     'Creating token...'
   );
@@ -4333,6 +4427,15 @@ tokenForm.addEventListener('submit', async (event) => {
         metadataInput,
         tokenLogoFile
       );
+
+    if (
+      !(await ensureWalletBalanceForTokenCreation(
+        selectedNetwork,
+        writeWalletAddress
+      ))
+    ) {
+      return;
+    }
 
     showWalletConfirmPopup(
       'Creating token...'
