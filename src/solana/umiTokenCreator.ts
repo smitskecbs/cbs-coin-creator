@@ -20,10 +20,6 @@ import {
   mplToolbox,
 } from '@metaplex-foundation/mpl-toolbox';
 
-import {
-  findVanityMint,
-} from './findVanityMint';
-
 type CreateUmiTokenParams = {
   walletProvider: any;
   metadataUri: string;

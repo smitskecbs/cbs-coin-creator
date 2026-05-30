@@ -3,7 +3,7 @@ import {
 } from '@solana/kit';
 
 import {
-  NETWORKS,
+  SOLANA_NETWORKS,
 } from './config';
 
 export function getRpc(
@@ -11,7 +11,7 @@ export function getRpc(
 ) {
 
   return createSolanaRpc(
-    NETWORKS[network]
+    SOLANA_NETWORKS[network].rpc
   );
 
 }

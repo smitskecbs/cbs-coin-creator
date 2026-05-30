@@ -74,9 +74,6 @@ export async function createToken(
 
     const result =
       await createMintWithWeb3Bridge({
-        network:
-          params.network,
-
         walletProvider:
           params.walletProvider as any,
 
