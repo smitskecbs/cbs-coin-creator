@@ -2,6 +2,9 @@ export type SolanaNetwork =
   | 'devnet'
   | 'mainnet';
 
+const SOLSCAN_ORIGIN =
+  'https://solscan.io';
+
 export const SOLANA_NETWORKS: Record<
   SolanaNetwork,
   {
@@ -14,7 +17,7 @@ export const SOLANA_NETWORKS: Record<
       'https://api.devnet.solana.com',
 
     explorer:
-      'https://explorer.solana.com/?cluster=devnet',
+      SOLSCAN_ORIGIN,
   },
 
   mainnet: {
@@ -22,7 +25,7 @@ export const SOLANA_NETWORKS: Record<
       'https://api.mainnet-beta.solana.com',
 
     explorer:
-      'https://explorer.solana.com',
+      SOLSCAN_ORIGIN,
   },
 };
 
@@ -41,12 +44,36 @@ export function getExplorerTokenUrl(
   network: SolanaNetwork,
   mintAddress: string
 ): string {
-  return `${SOLANA_NETWORKS[network].explorer}/address/${mintAddress}`;
+  console.log(
+    'Explorer network:',
+    network
+  );
+
+  const url =
+    `${SOLSCAN_ORIGIN}/token/${mintAddress}`;
+
+  if (network === 'devnet') {
+    return `${url}?cluster=devnet`;
+  }
+
+  return url;
 }
 
 export function getExplorerTxUrl(
   network: SolanaNetwork,
   signature: string
 ): string {
-  return `${SOLANA_NETWORKS[network].explorer}/tx/${signature}`;
+  console.log(
+    'Explorer network:',
+    network
+  );
+
+  const url =
+    `${SOLSCAN_ORIGIN}/tx/${signature}`;
+
+  if (network === 'devnet') {
+    return `${url}?cluster=devnet`;
+  }
+
+  return url;
 }

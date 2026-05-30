@@ -495,6 +495,47 @@ details.accordion[open] .accordion-chevron {
   margin: 0 0 16px;
   opacity: 0.95;
   font-weight: 650;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.action-popup-vanity-extras {
+  margin: 0 0 16px;
+}
+
+.action-popup-vanity-label {
+  margin: 0 0 6px;
+  color: #666666;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.action-popup-vanity-address {
+  margin: 0 0 10px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.action-popup-vanity-address code {
+  display: inline-block;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(216, 111, 0, 0.08);
+  border: 1px solid rgba(216, 111, 0, 0.16);
+  color: #1a1a1a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.action-popup-copy-btn {
+  width: 100%;
+  margin: 0;
 }
 
 .action-popup-indicator {
