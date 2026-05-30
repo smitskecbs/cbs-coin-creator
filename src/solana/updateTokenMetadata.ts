@@ -17,7 +17,13 @@ import {
   fetchMetadataFromSeeds,
 } from '@metaplex-foundation/mpl-token-metadata';
 
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
+
 type UpdateTokenMetadataParams = {
+  network: SolanaNetwork;
   walletProvider: any;
   mintAddress: string;
   metadataUri: string;
@@ -28,7 +34,9 @@ export async function updateTokenMetadata(
 ) {
   const umi =
     createUmi(
-      'https://api.devnet.solana.com'
+      getRpc(
+        params.network
+      )
     );
 
   umi.use(
@@ -105,11 +113,12 @@ export async function updateTokenMetadata(
 }
 export async function lockTokenMetadata(
   walletProvider: any,
-  mintAddress: string
+  mintAddress: string,
+  network: SolanaNetwork
 ) {
   const umi =
     createUmi(
-      'https://api.devnet.solana.com'
+      getRpc(network)
     );
 
   umi.use(

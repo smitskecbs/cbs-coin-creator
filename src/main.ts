@@ -13,6 +13,8 @@ import {
 
 import {
   ENABLE_MAINNET,
+  getExplorerTokenUrl,
+  type SolanaNetwork,
 } from './solana/config';
 
 import {
@@ -152,6 +154,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </select>
       </div>
 
+      <div
+        id="mainnetNetworkWarning"
+        class="warning-box"
+        style="display: none;"
+      ></div>
+
       <div class="wallet-panel">
         <label for="walletSelect">Choose wallet</label>
 
@@ -200,6 +208,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <strong>Address:</strong>
           <span id="pendingVanityMintAddress"></span>
         </p>
+        <p>
+          <strong>Network:</strong>
+          <span id="pendingVanityMintNetwork"></span>
+        </p>
+        <p
+          id="pendingVanityNetworkMismatch"
+          class="helper-text"
+          style="display: none;"
+        ></p>
         <div class="pending-vanity-actions">
           <button
             id="continuePendingVanityMint"
@@ -775,6 +792,82 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const networkSelect =
   document.getElementById('networkSelect') as HTMLSelectElement;
 
+function getSelectedNetwork(): SolanaNetwork {
+  return networkSelect.value ===
+    'mainnet'
+    ? 'mainnet'
+    : 'devnet';
+}
+
+function isMainnetWriteBlocked(): boolean {
+  return (
+    getSelectedNetwork() ===
+      'mainnet' &&
+    !ENABLE_MAINNET
+  );
+}
+
+function showMainnetBlockedMessage() {
+  showUserError(
+    'Mainnet is locked for now. Test on devnet first.'
+  );
+  showActionPopup(
+    'Mainnet locked',
+    'Mainnet is locked for now. Test on devnet first.',
+    {
+      showStopButton: false,
+      state: 'error',
+    }
+  );
+  hideActionPopup(
+    POPUP_READ_MS
+  );
+}
+
+function ensureWriteNetworkAllowed(): boolean {
+  if (
+    isMainnetWriteBlocked()
+  ) {
+    showMainnetBlockedMessage();
+    return false;
+  }
+
+  return true;
+}
+
+function updateMainnetNetworkWarning() {
+  const warning =
+    document.getElementById(
+      'mainnetNetworkWarning'
+    );
+
+  if (!warning) {
+    return;
+  }
+
+  if (
+    getSelectedNetwork() ===
+    'mainnet'
+  ) {
+    warning.style.display =
+      'block';
+    warning.innerHTML =
+      '<strong>Mainnet selected.</strong> Real SOL is used for every transaction. Make sure your wallet is on mainnet before confirming.';
+  } else {
+    warning.style.display =
+      'none';
+  }
+}
+
+networkSelect.addEventListener(
+  'change',
+  () => {
+    updateMainnetNetworkWarning();
+    renderPendingVanityMintUI();
+  }
+);
+updateMainnetNetworkWarning();
+
 const walletSelect =
   document.getElementById('walletSelect') as HTMLSelectElement;
 
@@ -957,6 +1050,7 @@ type PendingVanityMint = {
 };
 
 type TokenCreateFinishContext = {
+  network: SolanaNetwork;
   writeWallet: WalletProvider;
   writeWalletAddress: string;
   uploadedMetadata: {
@@ -1000,6 +1094,7 @@ const PENDING_VANITY_MINT_STORAGE_KEY =
 
 type StoredPendingVanityMint = {
   status: 'Pending vanity mint';
+  network?: SolanaNetwork;
   address: string;
   secretKey: number[];
   attempts: number;
@@ -1026,6 +1121,8 @@ function savePendingVanityMintToStorage(
     {
       status:
         'Pending vanity mint',
+      network:
+        pending.network,
       address:
         pending.vanity
           .address,
@@ -1112,12 +1209,48 @@ function clearPendingVanityMintStorage() {
   );
 }
 
+function getStoredPendingVanityNetwork(
+  stored: StoredPendingVanityMint
+): SolanaNetwork {
+  return (
+    stored.network ??
+    'devnet'
+  );
+}
+
+function validatePendingVanityNetwork(
+  stored: StoredPendingVanityMint
+): boolean {
+  const storedNetwork =
+    getStoredPendingVanityNetwork(
+      stored
+    );
+  const selectedNetwork =
+    getSelectedNetwork();
+
+  if (
+    storedNetwork !==
+    selectedNetwork
+  ) {
+    showUserError(
+      `Pending vanity mint is stored for ${storedNetwork}. Switch to ${storedNetwork} or delete the pending mint.`
+    );
+    return false;
+  }
+
+  return true;
+}
+
 function buildPendingVanityTokenCreateFromStorage(
   stored: StoredPendingVanityMint,
   writeWallet: WalletProvider,
   writeWalletAddress: string
 ): PendingVanityTokenCreate {
   return {
+    network:
+      getStoredPendingVanityNetwork(
+        stored
+      ),
     writeWallet,
     writeWalletAddress,
     uploadedMetadata: {
@@ -1158,6 +1291,14 @@ function renderPendingVanityMintUI() {
     document.getElementById(
       'pendingVanityMintAddress'
     ) as HTMLSpanElement | null;
+  const networkEl =
+    document.getElementById(
+      'pendingVanityMintNetwork'
+    ) as HTMLSpanElement | null;
+  const mismatchEl =
+    document.getElementById(
+      'pendingVanityNetworkMismatch'
+    ) as HTMLParagraphElement | null;
 
   if (
     !box ||
@@ -1174,13 +1315,52 @@ function renderPendingVanityMintUI() {
       'none';
     addressEl.textContent =
       '';
+    if (networkEl) {
+      networkEl.textContent =
+        '';
+    }
+    if (mismatchEl) {
+      mismatchEl.style.display =
+        'none';
+      mismatchEl.textContent =
+        '';
+    }
     return;
   }
+
+  const storedNetwork =
+    getStoredPendingVanityNetwork(
+      stored
+    );
+  const selectedNetwork =
+    getSelectedNetwork();
+  const networkMismatch =
+    storedNetwork !==
+    selectedNetwork;
 
   box.style.display =
     'block';
   addressEl.textContent =
     stored.address;
+
+  if (networkEl) {
+    networkEl.textContent =
+      storedNetwork;
+  }
+
+  if (mismatchEl) {
+    if (networkMismatch) {
+      mismatchEl.style.display =
+        'block';
+      mismatchEl.textContent =
+        `Network mismatch: pending mint is stored for ${storedNetwork}, but ${selectedNetwork} is selected. Switch network or delete the pending mint.`;
+    } else {
+      mismatchEl.style.display =
+        'none';
+      mismatchEl.textContent =
+        '';
+    }
+  }
 }
 
 function clearAllPendingVanityState() {
@@ -1219,6 +1399,20 @@ async function continueStoredPendingVanityMint() {
 
   if (!stored) {
     renderPendingVanityMintUI();
+    return;
+  }
+
+  if (
+    !ensureWriteNetworkAllowed()
+  ) {
+    return;
+  }
+
+  if (
+    !validatePendingVanityNetwork(
+      stored
+    )
+  ) {
     return;
   }
 
@@ -1355,6 +1549,9 @@ function buildCreateUmiTokenParams(
   pending: PendingVanityTokenCreate
 ) {
   return {
+    network:
+      pending.network,
+
     walletProvider:
       pending.writeWallet,
 
@@ -1449,6 +1646,9 @@ async function finishTokenCreationAfterUmi(
   );
 
   await mintSupply({
+    network:
+      ctx.network,
+
     walletProvider:
       ctx.writeWallet,
 
@@ -1499,6 +1699,9 @@ async function finishTokenCreationAfterUmi(
   }
 
   await revokeAuthorities({
+    network:
+      ctx.network,
+
     walletProvider:
       ctx.writeWallet,
 
@@ -1540,6 +1743,12 @@ async function finishTokenCreationAfterUmi(
     ) as HTMLDivElement | null;
 
   if (tokenStatus) {
+    const explorerUrl =
+      getExplorerTokenUrl(
+        ctx.network,
+        umiResult.mintAddress
+      );
+
     tokenStatus.innerHTML = `
       <strong>
         Umi token created
@@ -1550,7 +1759,13 @@ async function finishTokenCreationAfterUmi(
       <strong>
         Active mint:
       </strong><br>
-      ${umiResult.mintAddress}
+      <a
+        href="${explorerUrl}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        ${umiResult.mintAddress}
+      </a>
 
       <br><br>
 
@@ -1929,6 +2144,13 @@ actionPopupTryAgainButton.addEventListener(
       return;
     }
 
+    if (
+      !ensureWriteNetworkAllowed()
+    ) {
+      endAction();
+      return;
+    }
+
     let pending =
       pendingVanityTokenCreate;
 
@@ -1940,6 +2162,15 @@ actionPopupTryAgainButton.addEventListener(
 
       if (
         !stored
+      ) {
+        endAction();
+        return;
+      }
+
+      if (
+        !validatePendingVanityNetwork(
+          stored
+        )
       ) {
         endAction();
         return;
@@ -2598,8 +2829,14 @@ async function refreshActiveTokenInfo(
   updateActionButtonStates();
 
   try {
+    const selectedNetwork =
+      getSelectedNetwork();
+
     const tokenInfo =
-      await getTokenInfo(mint);
+      await getTokenInfo(
+        mint,
+        selectedNetwork
+      );
 
     renderTokenInfoBox(
       tokenInfo,
@@ -2620,7 +2857,8 @@ async function refreshActiveTokenInfo(
     try {
       const metadata =
         await fetchTokenMetadataJson(
-          mint
+          mint,
+          selectedNetwork
         );
 
       metadataMutabilityState =
@@ -3095,6 +3333,12 @@ tokenForm.addEventListener('submit', async (event) => {
   }
 
   if (
+    !ensureWriteNetworkAllowed()
+  ) {
+    return;
+  }
+
+  if (
     !beginAction(
       'create-token'
     )
@@ -3103,6 +3347,9 @@ tokenForm.addEventListener('submit', async (event) => {
   }
 
   try {
+    const selectedNetwork =
+      getSelectedNetwork();
+
     const walletSession =
       await resolveConnectedWallet(
         'create-token'
@@ -3126,25 +3373,6 @@ tokenForm.addEventListener('submit', async (event) => {
     const writeWalletAddress =
       walletSession.address;
 
-  if (
-  networkSelect.value === 'mainnet' &&
-  !ENABLE_MAINNET
-) {
-  showUserError(
-    'Mainnet minting is locked for now. Test on devnet first.'
-  );
-  showActionPopup(
-    'Mainnet locked',
-    'Mainnet minting is locked for now. Test on devnet first.',
-    {
-      showStopButton: false,
-      state: 'error',
-    }
-  );
-  hideActionPopup(POPUP_READ_MS);
-
-  return;
-}
   const tokenDescription =
   (document.getElementById('tokenDescription') as HTMLTextAreaElement).value;
  
@@ -3287,6 +3515,8 @@ const revokeFreezeAfterCreate =
 
 const finishContext: TokenCreateFinishContext =
   {
+    network:
+      selectedNetwork,
     writeWallet,
     writeWalletAddress,
     uploadedMetadata,
@@ -3399,6 +3629,9 @@ if (usedVanitySearch) {
     await withWalletConfirmTimeout(
       () =>
         createUmiToken({
+          network:
+            selectedNetwork,
+
           walletProvider:
             writeWallet,
 
@@ -3552,9 +3785,19 @@ manageTokenButton.addEventListener(
     }
 
     try {
+      if (
+        !ensureWriteNetworkAllowed()
+      ) {
+        endAction();
+        return;
+      }
+
       console.log(
         'Apply Token Tools clicked'
       );
+
+      const selectedNetwork =
+        getSelectedNetwork();
 
       const walletSession =
         await resolveConnectedWallet(
@@ -3595,7 +3838,8 @@ manageTokenButton.addEventListener(
 
       const tokenInfo =
         await getTokenInfo(
-          mintAddress
+          mintAddress,
+          selectedNetwork
         );
 
       renderTokenInfoBox(
@@ -3657,6 +3901,9 @@ manageTokenButton.addEventListener(
     }
 
     await revokeAuthorities({
+      network:
+        selectedNetwork,
+
       walletProvider:
         walletSession.provider,
 
@@ -3722,6 +3969,16 @@ updateMetadataButton.addEventListener(
     }
 
     try {
+      if (
+        !ensureWriteNetworkAllowed()
+      ) {
+        endAction();
+        return;
+      }
+
+      const selectedNetwork =
+        getSelectedNetwork();
+
       showActionPopup(
         'Updating metadata...',
         'Preparing metadata update...',
@@ -3779,7 +4036,8 @@ updateMetadataButton.addEventListener(
       
       const currentMetadata =
         await fetchTokenMetadataJson(
-          mintAddress
+          mintAddress,
+          selectedNetwork
         );
 
       console.log(
@@ -3959,6 +4217,9 @@ showWalletConfirmPopup(
 );
 
 await updateTokenMetadata({
+  network:
+    selectedNetwork,
+
   walletProvider:
     walletSession.provider,
 
@@ -4019,6 +4280,16 @@ hideActionPopup(POPUP_READ_MS);
     }
 
     try {
+      if (
+        !ensureWriteNetworkAllowed()
+      ) {
+        endAction();
+        return;
+      }
+
+      const selectedNetwork =
+        getSelectedNetwork();
+
       const walletSession =
         await resolveConnectedWallet(
           'lock-metadata'
@@ -4079,7 +4350,8 @@ hideActionPopup(POPUP_READ_MS);
 
       await lockTokenMetadata(
         walletSession.provider,
-        mintAddress
+        mintAddress,
+        selectedNetwork
       );
 
       updateMetadataStatus.innerHTML =

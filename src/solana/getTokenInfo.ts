@@ -1,19 +1,24 @@
 import {
   Connection,
   PublicKey,
-  clusterApiUrl,
 } from '@solana/web3.js';
 
 import {
   getMint,
 } from '@solana/spl-token';
 
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
+
 export async function getTokenInfo(
-  mintAddress: string
+  mintAddress: string,
+  network: SolanaNetwork
 ) {
   const connection =
     new Connection(
-      clusterApiUrl('devnet'),
+      getRpc(network),
       'confirmed'
     );
 

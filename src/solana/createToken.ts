@@ -3,11 +3,13 @@ import {
 } from './web3Bridge';
 
 import {
-  SOLANA_NETWORKS,
+  getExplorerTokenUrl,
+  getExplorerTxUrl,
+  type SolanaNetwork,
 } from './config';
 
 type CreateTokenParams = {
-  network: 'devnet' | 'mainnet';
+  network: SolanaNetwork;
   walletAddress: string;
   walletProvider: unknown;
   tokenName: string;
@@ -74,6 +76,9 @@ export async function createToken(
 
     const result =
       await createMintWithWeb3Bridge({
+        network:
+          params.network,
+
         walletProvider:
           params.walletProvider as any,
 
@@ -98,16 +103,17 @@ export async function createToken(
       result
     );
 
-    const explorerBase =
-      SOLANA_NETWORKS[
-        params.network
-      ].explorer;
-
     const txUrl =
-      `${explorerBase}/tx/${result.signature}`;
+      getExplorerTxUrl(
+        params.network,
+        result.signature
+      );
 
     const mintUrl =
-      `${explorerBase}/address/${result.mintAddress}`;
+      getExplorerTokenUrl(
+        params.network,
+        result.mintAddress
+      );
 
     setTokenStatus(`
       <strong>

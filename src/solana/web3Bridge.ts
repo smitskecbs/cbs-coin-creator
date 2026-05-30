@@ -4,8 +4,12 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
-  clusterApiUrl,
 } from '@solana/web3.js';
+
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
 
 import {
   createAssociatedTokenAccountInstruction,
@@ -31,6 +35,7 @@ type WalletProvider = {
 };
 
 type CreateMintWithWeb3Params = {
+  network: SolanaNetwork;
   walletProvider: WalletProvider;
   walletAddress: string;
   decimals: number;
@@ -44,7 +49,9 @@ export async function createMintWithWeb3Bridge(
 ) {
   const connection =
     new Connection(
-      clusterApiUrl('devnet'),
+      getRpc(
+        params.network
+      ),
       'confirmed'
     );
 

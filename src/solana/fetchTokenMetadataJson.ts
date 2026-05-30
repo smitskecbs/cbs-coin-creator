@@ -10,12 +10,18 @@ import {
   fetchMetadataFromSeeds,
 } from '@metaplex-foundation/mpl-token-metadata';
 
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
+
 export async function fetchTokenMetadataJson(
-  mintAddress: string
+  mintAddress: string,
+  network: SolanaNetwork
 ) {
   const umi =
     createUmi(
-      'https://api.devnet.solana.com'
+      getRpc(network)
     );
 
   const mint =

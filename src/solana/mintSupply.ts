@@ -2,8 +2,12 @@ import {
   Connection,
   PublicKey,
   Transaction,
-  clusterApiUrl,
 } from '@solana/web3.js';
+
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
 
 import {
   createAssociatedTokenAccountInstruction,
@@ -16,6 +20,7 @@ import {
 type WalletProvider = any;
 
 type MintSupplyParams = {
+  network: SolanaNetwork;
   walletProvider: WalletProvider;
   walletAddress: string;
   mintAddress: string;
@@ -28,7 +33,9 @@ export async function mintSupply(
 ) {
   const connection =
     new Connection(
-      clusterApiUrl('devnet'),
+      getRpc(
+        params.network
+      ),
       'confirmed'
     );
 

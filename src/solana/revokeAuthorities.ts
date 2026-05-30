@@ -2,8 +2,12 @@ import {
   Connection,
   PublicKey,
   Transaction,
-  clusterApiUrl,
 } from '@solana/web3.js';
+
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
 
 import {
   AuthorityType,
@@ -14,6 +18,7 @@ import {
 type WalletProvider = any;
 
 type RevokeAuthoritiesParams = {
+  network: SolanaNetwork;
   walletProvider: WalletProvider;
   walletAddress: string;
   mintAddress: string;
@@ -33,7 +38,9 @@ export async function revokeAuthorities(
 
   const connection =
     new Connection(
-      clusterApiUrl('devnet'),
+      getRpc(
+        params.network
+      ),
       'confirmed'
     );
 

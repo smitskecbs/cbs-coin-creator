@@ -1,17 +1,4 @@
-import {
-  createSolanaRpc,
-} from '@solana/kit';
-
-import {
-  SOLANA_NETWORKS,
+export {
+  getRpc,
+  type SolanaNetwork,
 } from './config';
-
-export function getRpc(
-  network: 'devnet' | 'mainnet'
-) {
-
-  return createSolanaRpc(
-    SOLANA_NETWORKS[network].rpc
-  );
-
-}

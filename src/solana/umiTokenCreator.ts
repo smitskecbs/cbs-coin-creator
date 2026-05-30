@@ -20,7 +20,13 @@ import {
   mplToolbox,
 } from '@metaplex-foundation/mpl-toolbox';
 
+import {
+  getRpc,
+  type SolanaNetwork,
+} from './config';
+
 type CreateUmiTokenParams = {
+  network: SolanaNetwork;
   walletProvider: any;
   metadataUri: string;
   tokenName: string;
@@ -41,7 +47,9 @@ export async function createUmiToken(
 ) {
   const umi =
     createUmi(
-      'https://api.devnet.solana.com'
+      getRpc(
+        params.network
+      )
     );
   umi.use(
   mplToolbox()
