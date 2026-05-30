@@ -128,6 +128,12 @@ const TAG_PILL_OPTIONS = [
   { value: 'other', label: 'Other' },
 ] as const;
 
+const DONATION_WALLET_ADDRESS =
+  'ManGofryUWC5VWk7t4ATP32qJtGVBBNoVi2AQ9HyR9J';
+
+const DONATION_WALLET_SHORT =
+  'ManGofry...HyR9J';
+
 function renderTagPillsMarkup(): string {
   return TAG_PILL_OPTIONS.map(
     ({ value, label }) =>
@@ -728,6 +734,30 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
       </details>
     </section>
+
+    <footer class="support-footer">
+      <p class="support-footer-brand">
+        Built with CBS Token Builder
+      </p>
+      <p class="support-footer-label">
+        Support development
+      </p>
+      <div class="support-footer-wallet">
+        <code
+          id="donationWalletDisplay"
+          class="support-footer-address"
+          title="${DONATION_WALLET_ADDRESS}"
+        >${DONATION_WALLET_SHORT}</code>
+        <button
+          id="copyDonationAddress"
+          type="button"
+          class="support-footer-copy"
+        >
+          Copy
+        </button>
+      </div>
+    </footer>
+
     <div
   id="vanitySearchPopup"
   class="action-popup-overlay"
@@ -929,6 +959,11 @@ const connectButton =
 const walletBox =
   document.getElementById('walletBox') as HTMLDivElement;
 
+const copyDonationAddressButton =
+  document.getElementById(
+    'copyDonationAddress'
+  ) as HTMLButtonElement;
+
   const progressStatus =
   document.getElementById(
     'progressStatus'
@@ -1104,6 +1139,18 @@ console.log(
 );
 let stopVanitySearch =
   false;
+
+let isVanitySearching =
+  false;
+
+let vanitySearchAttempts =
+  0;
+
+let actionPopupHideTimeoutId:
+  | ReturnType<
+      typeof setTimeout
+    >
+  | null = null;
 
 let vanityFoundAwaitingContinue =
   false;
@@ -2353,8 +2400,83 @@ function showActionPopup(
   );
 }
 
-function hideActionPopup(delayMs = 0) {
+function clearActionPopupHideTimeout() {
+  if (
+    actionPopupHideTimeoutId !==
+    null
+  ) {
+    clearTimeout(
+      actionPopupHideTimeoutId
+    );
+    actionPopupHideTimeoutId =
+      null;
+  }
+}
+
+function startVanitySearchUI() {
+  isVanitySearching =
+    true;
+  vanitySearchAttempts =
+    0;
+  stopVanitySearch =
+    false;
+  clearActionPopupHideTimeout();
+  showVanitySearchPopup(
+    0
+  );
+}
+
+function endVanitySearchUI() {
+  isVanitySearching =
+    false;
+  clearActionPopupHideTimeout();
+}
+
+function ensureVanitySearchPopupVisible() {
+  if (
+    !isVanitySearching
+  ) {
+    return;
+  }
+
+  if (
+    vanitySearchPopup.style
+      .display !==
+    'flex'
+  ) {
+    showVanitySearchPopup(
+      vanitySearchAttempts
+    );
+  }
+}
+
+function hideActionPopup(
+  delayMs = 0,
+  options?: {
+    force?: boolean;
+  }
+) {
+  const force =
+    options?.force ??
+    false;
+
+  if (
+    isVanitySearching &&
+    !force
+  ) {
+    return;
+  }
+
   const doHide = () => {
+    if (
+      isVanitySearching &&
+      !force
+    ) {
+      return;
+    }
+
+    actionPopupHideTimeoutId =
+      null;
     clearWalletConfirmTimeout();
     vanitySearchPopup.style.display =
       'none';
@@ -2373,8 +2495,14 @@ function hideActionPopup(delayMs = 0) {
       'Try again';
   };
 
+  clearActionPopupHideTimeout();
+
   if (delayMs > 0) {
-    setTimeout(doHide, delayMs);
+    actionPopupHideTimeoutId =
+      setTimeout(
+        doHide,
+        delayMs
+      );
     return;
   }
 
@@ -2395,6 +2523,9 @@ const VANITY_WALLET_CONFIRM_LINES =
 function showVanitySearchPopup(
   attempts = 0
 ) {
+  vanitySearchAttempts =
+    attempts;
+
   showActionPopup(
     'Searching vanity mint...',
     `${VANITY_SEARCH_INTRO}<br><br>Attempts: ${attempts}`,
@@ -2408,6 +2539,11 @@ function showVanitySearchPopup(
 function setVanitySearchAttempts(
   attempts: number
 ) {
+  vanitySearchAttempts =
+    attempts;
+
+  ensureVanitySearchPopupVisible();
+
   actionPopupText.innerHTML =
     formatActionPopupText(
       `${VANITY_SEARCH_INTRO}<br><br>Attempts: ${attempts}`,
@@ -2576,6 +2712,7 @@ function terminateVanityWorker() {
 
   stopVanitySearch =
     true;
+  endVanitySearchUI();
 
   if (vanityWorkerReject) {
     vanityWorkerReject(
@@ -2592,7 +2729,10 @@ function terminateVanityWorker() {
   setActionPopupIndicator(
     'error'
   );
-  hideActionPopup(1800);
+  hideActionPopup(
+    1800,
+    { force: true }
+  );
 }
 
 stopVanitySearchButton.addEventListener(
@@ -3729,6 +3869,30 @@ console.log(
     alert('Wallet connection failed');
   }
 });
+
+copyDonationAddressButton.addEventListener(
+  'click',
+  async () => {
+    const copied =
+      await copyTextToClipboard(
+        DONATION_WALLET_ADDRESS
+      );
+
+    copyDonationAddressButton.textContent =
+      copied
+        ? 'Copied'
+        : 'Failed';
+
+    window.setTimeout(
+      () => {
+        copyDonationAddressButton.textContent =
+          'Copy';
+      },
+      1600
+    );
+  }
+);
+
 function findVanityMintWithWorker() {
   return new Promise<{
     address: string;
@@ -3764,6 +3928,7 @@ function findVanityMintWithWorker() {
 
         if (data.type === 'found') {
           terminateVanityWorker();
+          endVanitySearchUI();
           stopVanitySearchButton.style.display =
             'none';
           vanityWorkerReject =
@@ -3785,6 +3950,7 @@ function findVanityMintWithWorker() {
           terminateVanityWorker();
           stopVanitySearch =
             true;
+          endVanitySearchUI();
           vanityWorkerReject =
             null;
 
@@ -3801,6 +3967,7 @@ function findVanityMintWithWorker() {
         terminateVanityWorker();
         stopVanitySearch =
           true;
+        endVanitySearchUI();
         vanityWorkerReject =
           null;
 
@@ -3954,9 +4121,6 @@ tokenForm.addEventListener('submit', async (event) => {
         state: 'error',
       }
     );
-    hideActionPopup(
-      POPUP_READ_MS
-    );
   }
 
   if (
@@ -4047,9 +4211,7 @@ tokenForm.addEventListener('submit', async (event) => {
       progressStatus.innerHTML =
         'Searching vanity mint...';
 
-      showVanitySearchPopup(
-        0
-      );
+      startVanitySearchUI();
 
       const vanityMintResult =
         await findVanityMintWithWorker();
@@ -4276,7 +4438,10 @@ tokenForm.addEventListener('submit', async (event) => {
       state: 'error',
     }
   );
-  hideActionPopup(POPUP_READ_MS);
+  hideActionPopup(
+    POPUP_READ_MS,
+    { force: true }
+  );
   clearPendingVanityTokenCreate();
   renderPendingVanityMintUI();
 } finally {
@@ -4982,7 +5147,6 @@ window.addEventListener(
         'Auto reconnected wallet:',
         connectedWalletAddress
       );
-
     } catch (error) {
       console.log(
         'Auto reconnect skipped.'

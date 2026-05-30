@@ -20,8 +20,10 @@ body {
 
 .app-shell {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
   padding: 24px;
 }
 
@@ -536,6 +538,66 @@ details.accordion[open] .accordion-chevron {
 .action-popup-copy-btn {
   width: 100%;
   margin: 0;
+}
+
+.support-footer {
+  width: 100%;
+  max-width: 460px;
+  margin-top: 8px;
+  padding: 18px 20px 24px;
+  text-align: center;
+  color: #777777;
+  border-top: 1px solid rgba(216, 111, 0, 0.12);
+}
+
+.support-footer-brand {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888888;
+}
+
+.support-footer-label {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #999999;
+}
+
+.support-footer-wallet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.support-footer-address {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #666666;
+  background: rgba(216, 111, 0, 0.05);
+  border: 1px solid rgba(216, 111, 0, 0.1);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.support-footer-copy {
+  border: 1px solid rgba(216, 111, 0, 0.22);
+  background: rgba(255, 255, 255, 0.8);
+  color: #666666;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.support-footer-copy:hover {
+  background: rgba(216, 111, 0, 0.08);
+  border-color: rgba(216, 111, 0, 0.32);
 }
 
 .action-popup-indicator {
