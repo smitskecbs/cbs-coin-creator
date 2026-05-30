@@ -23,8 +23,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 20px 24px 24px;
+  gap: 8px;
+  padding: 16px 24px 24px;
 }
 
 .site-banner {
@@ -36,41 +36,14 @@ body {
   box-shadow: 0 8px 28px rgba(216, 111, 0, 0.1);
 }
 
-.site-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  margin-bottom: 4px;
-}
-
-.site-logo {
-  display: block;
-  width: 88px;
-  height: 88px;
-  object-fit: contain;
-  margin-bottom: 8px;
-  filter: drop-shadow(
-    0 4px 10px rgba(216, 111, 0, 0.14)
-  );
-}
-
 .hero-card {
   max-width: 720px;
-  padding: 28px 32px 36px;
+  padding: 20px 32px 36px;
   border: 1px solid rgba(216, 111, 0, 0.2);
   border-radius: 28px;
   background: #ffffff;
   box-shadow: 0 10px 40px rgba(216, 111, 0, 0.08);
   text-align: center;
-}
-
-.eyebrow {
-  color: #ffb347;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  font-size: 13px;
-  margin: 0;
 }
 
 h1 {

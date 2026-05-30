@@ -182,16 +182,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     />
 
     <section class="hero-card">
-      <header class="site-header">
-        <img
-          class="site-logo"
-          src="${logoUrl}"
-          alt="CBS logo"
-        />
-
-        <p class="eyebrow">CBS TOOLKIT</p>
-      </header>
-
       <p class="hero-text">
         Create your own Solana token for free.
         No platform fees.
