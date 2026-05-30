@@ -5,6 +5,49 @@ export type SolanaNetwork =
 const SOLSCAN_ORIGIN =
   'https://solscan.io';
 
+const DEVNET_RPC_FALLBACK =
+  'https://api.devnet.solana.com';
+
+function readEnvRpc(
+  name: string
+): string | undefined {
+  const value =
+    import.meta.env[name];
+
+  if (
+    typeof value !==
+    'string'
+  ) {
+    return undefined;
+  }
+
+  const trimmed =
+    value.trim();
+
+  return trimmed ||
+    undefined;
+}
+
+const HELIUS_DEVNET_RPC =
+  readEnvRpc(
+    'VITE_HELIUS_DEVNET_RPC'
+  ) ??
+  DEVNET_RPC_FALLBACK;
+
+const HELIUS_MAINNET_RPC =
+  readEnvRpc(
+    'VITE_HELIUS_MAINNET_RPC'
+  );
+
+export const MAINNET_RPC_NOT_CONFIGURED_MESSAGE =
+  'Mainnet RPC is not configured.';
+
+export function isMainnetRpcConfigured(): boolean {
+  return Boolean(
+    HELIUS_MAINNET_RPC
+  );
+}
+
 export const SOLANA_NETWORKS: Record<
   SolanaNetwork,
   {
@@ -14,7 +57,7 @@ export const SOLANA_NETWORKS: Record<
 > = {
   devnet: {
     rpc:
-      'https://api.devnet.solana.com',
+      HELIUS_DEVNET_RPC,
 
     explorer:
       SOLSCAN_ORIGIN,
@@ -22,7 +65,8 @@ export const SOLANA_NETWORKS: Record<
 
   mainnet: {
     rpc:
-      'https://api.mainnet-beta.solana.com',
+      HELIUS_MAINNET_RPC ??
+      '',
 
     explorer:
       SOLSCAN_ORIGIN,
@@ -30,14 +74,27 @@ export const SOLANA_NETWORKS: Record<
 };
 
 export const ENABLE_MAINNET =
-  false;
+  true;
 
 export function getRpc(
   network: SolanaNetwork
 ): string {
-  return SOLANA_NETWORKS[
-    network
-  ].rpc;
+  if (
+    network ===
+    'mainnet'
+  ) {
+    if (
+      !HELIUS_MAINNET_RPC
+    ) {
+      throw new Error(
+        MAINNET_RPC_NOT_CONFIGURED_MESSAGE
+      );
+    }
+
+    return HELIUS_MAINNET_RPC;
+  }
+
+  return HELIUS_DEVNET_RPC;
 }
 
 export function getExplorerTokenUrl(

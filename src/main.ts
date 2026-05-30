@@ -14,6 +14,8 @@ import {
 import {
   ENABLE_MAINNET,
   getExplorerTokenUrl,
+  isMainnetRpcConfigured,
+  MAINNET_RPC_NOT_CONFIGURED_MESSAGE,
   type SolanaNetwork,
 } from './solana/config';
 
@@ -823,20 +825,46 @@ function getSelectedNetwork(): SolanaNetwork {
 }
 
 function isMainnetWriteBlocked(): boolean {
-  return (
+  if (
+    getSelectedNetwork() !==
+    'mainnet'
+  ) {
+    return false;
+  }
+
+  if (
+    !isMainnetRpcConfigured()
+  ) {
+    return true;
+  }
+
+  return !ENABLE_MAINNET;
+}
+
+function getMainnetWriteBlockedMessage(): string {
+  if (
     getSelectedNetwork() ===
       'mainnet' &&
-    !ENABLE_MAINNET
-  );
+    !isMainnetRpcConfigured()
+  ) {
+    return MAINNET_RPC_NOT_CONFIGURED_MESSAGE;
+  }
+
+  return 'Mainnet is locked for now. Test on devnet first.';
 }
 
 function showMainnetBlockedMessage() {
-  showUserError(
-    'Mainnet is locked for now. Test on devnet first.'
-  );
+  const message =
+    getMainnetWriteBlockedMessage();
+
+  showUserError(message);
   showActionPopup(
-    'Mainnet locked',
-    'Mainnet is locked for now. Test on devnet first.',
+    getSelectedNetwork() ===
+      'mainnet' &&
+      !isMainnetRpcConfigured()
+      ? 'Mainnet RPC missing'
+      : 'Mainnet locked',
+    message,
     {
       showStopButton: false,
       state: 'error',
