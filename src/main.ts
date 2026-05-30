@@ -2379,16 +2379,12 @@ function setActionPopupIndicator(
 
 function formatActionPopupText(
   text: string,
-  state:
+  _state:
     | 'loading'
     | 'success'
     | 'error'
 ) {
-  if (state !== 'loading') {
-    return text;
-  }
-
-  return `${text}<span class="action-popup-dots" aria-hidden="true"></span>`;
+  return text;
 }
 
 function setActionPopupMessage(
