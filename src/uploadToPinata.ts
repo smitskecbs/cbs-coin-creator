@@ -1,34 +1,16 @@
-export async function uploadFileToPinata(
-  file: File
-) {
-  const jwt =
-    import.meta.env.VITE_PINATA_JWT;
+const PINATA_UPLOAD_API =
+  'https://cbs-coin-creator.vercel.app/api/upload-to-pinata';
 
-  if (!jwt) {
-    throw new Error(
-      'Missing Pinata JWT'
-    );
-  }
-
-  const formData =
-    new FormData();
-
-  formData.append(
-    'file',
-    file
-  );
-
+async function uploadFormDataToPinata(
+  formData: FormData
+): Promise<{
+  IpfsHash: string;
+}> {
   const response =
     await fetch(
-      'https://api.pinata.cloud/pinning/pinFileToIPFS',
+      PINATA_UPLOAD_API,
       {
         method: 'POST',
-
-        headers: {
-          Authorization:
-            `Bearer ${jwt}`,
-        },
-
         body:
           formData,
       }
@@ -42,6 +24,33 @@ export async function uploadFileToPinata(
 
   const data =
     await response.json();
+
+  if (
+    !data.IpfsHash
+  ) {
+    throw new Error(
+      'Pinata upload failed'
+    );
+  }
+
+  return data;
+}
+
+export async function uploadFileToPinata(
+  file: File
+) {
+  const formData =
+    new FormData();
+
+  formData.append(
+    'file',
+    file
+  );
+
+  const data =
+    await uploadFormDataToPinata(
+      formData
+    );
 
   console.log(
     'Pinata upload result:',
@@ -86,15 +95,6 @@ type TokenMetadata = {
 export async function uploadMetadataToPinata(
   metadata: TokenMetadata
 ) {
-  const jwt =
-    import.meta.env.VITE_PINATA_JWT;
-
-  if (!jwt) {
-    throw new Error(
-      'Missing Pinata JWT'
-    );
-  }
-
   const metadataJson = {
     name:
       metadata.name,
@@ -108,11 +108,11 @@ export async function uploadMetadataToPinata(
     image:
       metadata.image,
 
-      category:
-  metadata.category,
+    category:
+      metadata.category,
 
-tags:
-  metadata.tags,
+    tags:
+      metadata.tags,
 
     extensions:
       metadata.extensions,
@@ -123,36 +123,32 @@ tags:
     metadataJson
   );
 
-  const response =
-    await fetch(
-      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+  const metadataFile =
+    new File(
+      [
+        JSON.stringify(
+          metadataJson
+        ),
+      ],
+      'metadata.json',
       {
-        method: 'POST',
-
-        headers: {
-          Authorization:
-            `Bearer ${jwt}`,
-
-          'Content-Type':
-            'application/json',
-        },
-
-        body:
-          JSON.stringify({
-            pinataContent:
-              metadataJson,
-          }),
+        type:
+          'application/json',
       }
     );
 
-  if (!response.ok) {
-    throw new Error(
-      'Pinata metadata upload failed'
-    );
-  }
+  const formData =
+    new FormData();
+
+  formData.append(
+    'file',
+    metadataFile
+  );
 
   const data =
-    await response.json();
+    await uploadFormDataToPinata(
+      formData
+    );
 
   console.log(
     'Pinata metadata result:',
