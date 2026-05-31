@@ -883,16 +883,21 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
   </div>
 </div>
+  </main>
+`;
 
+document.body.insertAdjacentHTML(
+  'beforeend',
+  `
     <div
       id="lowSolBalanceModal"
-      class="action-popup-overlay low-sol-modal-overlay"
+      class="low-sol-modal-overlay"
       style="display: none;"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lowSolBalanceModalTitle"
     >
-      <div class="action-popup-card low-sol-modal-card">
+      <div class="low-sol-modal-card">
         <span
           class="action-popup-icon action-popup-icon--error"
           aria-hidden="true"
@@ -945,8 +950,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
       </div>
     </div>
-  </main>
-`;
+  `
+);
 
 const networkSelect =
   document.getElementById('networkSelect') as HTMLSelectElement;
@@ -2134,6 +2139,9 @@ let lowSolBalanceModalResolver:
 function hideLowSolBalanceModal() {
   lowSolBalanceModal.style.display =
     'none';
+  document.body.classList.remove(
+    'low-sol-modal-open'
+  );
 }
 
 function resolveLowSolBalanceModal(
@@ -2165,6 +2173,9 @@ function showLowSolBalanceModal(
   progressStatus.innerHTML =
     `Your wallet has ${balanceSol.toFixed(4)} SOL. Recommended balance is 0.6 SOL.`;
 
+  document.body.classList.add(
+    'low-sol-modal-open'
+  );
   lowSolBalanceModal.style.display =
     'flex';
 
