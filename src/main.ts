@@ -6,7 +6,14 @@ import logoUrl from './assets/logo.png';
 import tokenBuilderBannerUrl from './assets/tokenbuilder.png';
 
 import {
+  detectAvailableWallets,
+  getDetectedWallet,
   getWalletProvider,
+  setWalletNetworkResolver,
+  subscribeToWalletChanges,
+  walletSupportsTokenCreation,
+  WALLET_UNSUPPORTED_SIGNING_MESSAGE,
+  type SolanaWalletProvider,
 } from './solana/wallets';
 
 import {
@@ -63,23 +70,8 @@ console.log(
   updateV1
 );
 
-type WalletProvider = {
-  connect: () => Promise<{
-    publicKey: {
-      toString(): string;
-    };
-  }>;
-
-  signTransaction?: (
-    transaction: unknown
-  ) => Promise<unknown>;
-
-  signAndSendTransaction?: (
-    transaction: unknown
-  ) => Promise<{
-    signature: string;
-  }>;
-};
+type WalletProvider =
+  SolanaWalletProvider;
 
 let connectedWallet:
   WalletProvider | null = null;
@@ -87,23 +79,8 @@ let connectedWallet:
 let connectedWalletAddress =
   '';
 
-declare global {
-  interface Window {
-    phantom?: {
-      solana?: WalletProvider;
-    };
-
-    solflare?: WalletProvider;
-
-    backpack?: {
-      solana?: WalletProvider;
-    };
-
-    jupiter?: {
-      solana?: WalletProvider;
-    };
-  }
-}
+let selectedWalletId =
+  '';
 
 const TAG_PILL_OPTIONS = [
   { value: 'meme', label: 'Meme' },
@@ -173,6 +150,10 @@ function setSiteFavicon() {
 
 setSiteFavicon();
 
+const isDevelopment =
+  window.location.hostname ===
+  'localhost';
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="app-shell">
     <img
@@ -211,19 +192,53 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       ></div>
 
       <div class="wallet-panel">
-        <label for="walletSelect">Choose wallet</label>
+        <label
+          id="walletSelectLabel"
+          for="walletSelect"
+        >
+          Choose wallet
+        </label>
 
-        <select id="walletSelect">
-          <option value="phantom">Phantom</option>
-          <option value="solflare">Solflare</option>
-          <option value="backpack">Backpack</option>
-          <option value="jupiter">Jupiter Wallet</option>
-        </select>
+        <p
+          id="walletDetectedHint"
+          class="wallet-detected-hint"
+          style="display: none;"
+        ></p>
 
-        <button id="connectWallet" class="primary-btn">
-          Connect Wallet
-        </button>
+        <select id="walletSelect"></select>
+
+        <div class="wallet-panel-actions">
+          <button id="connectWallet" class="primary-btn">
+            Connect Wallet
+          </button>
+
+          ${
+            isDevelopment
+              ? `
+          <button
+            id="testWallet"
+            type="button"
+            class="secondary-btn wallet-test-btn"
+          >
+            Test Wallet
+          </button>
+          `
+              : ''
+          }
+        </div>
       </div>
+
+      ${
+        isDevelopment
+          ? `
+      <div
+        id="walletTestResults"
+        class="wallet-box wallet-test-results"
+        style="display: none;"
+      ></div>
+      `
+          : ''
+      }
 
       <a
         class="vanity-link"
@@ -1061,8 +1076,28 @@ updateMainnetNetworkWarning();
 const walletSelect =
   document.getElementById('walletSelect') as HTMLSelectElement;
 
+const walletSelectLabel =
+  document.getElementById(
+    'walletSelectLabel'
+  ) as HTMLLabelElement;
+
+const walletDetectedHint =
+  document.getElementById(
+    'walletDetectedHint'
+  ) as HTMLParagraphElement;
+
 const connectButton =
   document.getElementById('connectWallet') as HTMLButtonElement;
+
+const testWalletButton =
+  document.getElementById(
+    'testWallet'
+  ) as HTMLButtonElement | null;
+
+const walletTestResults =
+  document.getElementById(
+    'walletTestResults'
+  ) as HTMLDivElement | null;
 
 
 const walletBox =
@@ -1254,6 +1289,116 @@ const lowSolCancelButton =
   document.getElementById(
     'lowSolCancelButton'
   ) as HTMLButtonElement;
+
+setWalletNetworkResolver(
+  getSelectedNetwork
+);
+
+function refreshWalletSelector() {
+  const wallets =
+    detectAvailableWallets();
+
+  const preferredWallet =
+    localStorage.getItem(
+      'preferredWallet'
+    );
+
+  walletSelect.innerHTML =
+    '';
+
+  if (
+    wallets.length ===
+    0
+  ) {
+    walletSelect.style.display =
+      'none';
+    walletSelectLabel.style.display =
+      'none';
+    walletDetectedHint.style.display =
+      'block';
+    walletDetectedHint.textContent =
+      'No Solana wallet detected. Install Phantom, Solflare, Backpack, Glow, or MetaMask with Solana support enabled.';
+    connectButton.disabled =
+      true;
+
+    if (
+      testWalletButton
+    ) {
+      testWalletButton.disabled =
+        true;
+    }
+
+    return;
+  }
+
+  connectButton.disabled =
+    false;
+
+  if (
+    testWalletButton
+  ) {
+    testWalletButton.disabled =
+      false;
+  }
+
+  for (const wallet of wallets) {
+    const option =
+      document.createElement(
+        'option'
+      );
+
+    option.value =
+      wallet.id;
+    option.textContent =
+      wallet.name;
+    walletSelect.appendChild(
+      option
+    );
+  }
+
+  const preferredExists =
+    preferredWallet &&
+    wallets.some(
+      (
+        wallet
+      ) =>
+        wallet.id ===
+        preferredWallet
+    );
+
+  selectedWalletId =
+    preferredExists
+      ? preferredWallet!
+      : wallets[0]!.id;
+
+  walletSelect.value =
+    selectedWalletId;
+
+  const showSelector =
+    wallets.length >
+    1;
+
+  walletSelect.style.display =
+    showSelector
+      ? ''
+      : 'none';
+  walletSelectLabel.style.display =
+    showSelector
+      ? ''
+      : 'none';
+  walletDetectedHint.style.display =
+    showSelector
+      ? 'none'
+      : 'block';
+  walletDetectedHint.textContent =
+    `Wallet: ${wallets[0]!.name}`;
+}
+
+refreshWalletSelector();
+
+subscribeToWalletChanges(
+  refreshWalletSelector
+);
 
 console.log(
   'Vanity popup elements:',
@@ -2748,7 +2893,7 @@ const VANITY_SEARCH_INTRO =
   'This can take time depending on the pattern.';
 
 const VANITY_WALLET_CONFIRM_LINES =
-  'Waiting for wallet confirmation...<br><br>Confirm in Phantom to continue.';
+  'Waiting for wallet confirmation...<br><br>Confirm in your wallet to continue.';
 
 function showVanitySearchPopup(
   attempts = 0
@@ -3604,6 +3749,422 @@ function getProviderPublicKey(
   return null;
 }
 
+function showWalletSigningUnsupported() {
+  showUserError(
+    WALLET_UNSUPPORTED_SIGNING_MESSAGE
+  );
+  showActionPopup(
+    'Unsupported wallet',
+    WALLET_UNSUPPORTED_SIGNING_MESSAGE,
+    {
+      showStopButton: false,
+      state: 'error',
+    }
+  );
+  hideActionPopup(
+    POPUP_READ_MS
+  );
+}
+
+function ensureWalletSupportsTokenCreation(
+  provider: WalletProvider
+): boolean {
+  if (
+    !walletSupportsTokenCreation(
+      provider
+    )
+  ) {
+    showWalletSigningUnsupported();
+    return false;
+  }
+
+  return true;
+}
+
+function getSelectedWalletId(): string {
+  return (
+    walletSelect.value ||
+    selectedWalletId ||
+    localStorage.getItem(
+      'preferredWallet'
+    ) ||
+    ''
+  );
+}
+
+type WalletSigningSupport = {
+  signTransaction: boolean;
+  signAndSendTransaction: boolean;
+  signAllTransactions: boolean;
+};
+
+function getWalletSigningSupport(
+  provider: WalletProvider
+): WalletSigningSupport {
+  return {
+    signTransaction:
+      typeof provider.signTransaction ===
+      'function',
+    signAndSendTransaction:
+      typeof provider.signAndSendTransaction ===
+      'function',
+    signAllTransactions:
+      typeof provider.signAllTransactions ===
+      'function',
+  };
+}
+
+function renderWalletTestStatusRow(
+  label: string,
+  ok: boolean
+): string {
+  return `
+    <li class="${
+      ok
+        ? 'wallet-test-ok'
+        : 'wallet-test-missing'
+    }">
+      <span>${label}</span>
+      <strong>${
+        ok
+          ? 'Yes'
+          : 'No'
+      }</strong>
+    </li>
+  `;
+}
+
+function renderWalletCompatibilityResults(
+  options: {
+    walletName: string;
+    network: SolanaNetwork;
+    connected: boolean;
+    address?: string;
+    balanceSol?: number;
+    balanceFetched: boolean;
+    signing: WalletSigningSupport;
+    compatible: boolean;
+    walletStandardSupport: boolean;
+    solanaProviderDetected: boolean;
+    publicKeyDetected: boolean;
+    errorMessage?: string;
+  }
+): string {
+  const {
+    walletName,
+    network,
+    connected,
+    address,
+    balanceSol,
+    balanceFetched,
+    signing,
+    compatible,
+    walletStandardSupport,
+    solanaProviderDetected,
+    publicKeyDetected,
+    errorMessage,
+  } = options;
+
+  const verdictClass =
+    compatible
+      ? 'wallet-test-verdict-compatible'
+      : 'wallet-test-verdict-incompatible';
+
+  const verdictLabel =
+    compatible
+      ? 'Compatible for token creation'
+      : 'Connection works but token creation may fail';
+
+  const signingDetected =
+    signing.signTransaction ||
+    signing.signAndSendTransaction ||
+    signing.signAllTransactions;
+
+  return `
+    <strong>Wallet compatibility test</strong>
+    <p class="wallet-test-meta">
+      Network: ${network}
+    </p>
+
+    ${
+      errorMessage
+        ? `<p class="wallet-test-error">${errorMessage}</p>`
+        : ''
+    }
+
+    <p class="wallet-test-section-title">
+      Wallet detection
+    </p>
+    <ul class="wallet-test-list">
+      <li class="wallet-test-value">
+        <span>Wallet name</span>
+        <strong>${walletName}</strong>
+      </li>
+      ${renderWalletTestStatusRow(
+        'Wallet Standard support detected',
+        walletStandardSupport
+      )}
+      ${renderWalletTestStatusRow(
+        'Solana provider detected',
+        solanaProviderDetected
+      )}
+      ${renderWalletTestStatusRow(
+        'Public key detected',
+        publicKeyDetected
+      )}
+    </ul>
+
+    <p class="wallet-test-section-title">
+      Connection checks
+    </p>
+    <ul class="wallet-test-list">
+      ${renderWalletTestStatusRow(
+        'Wallet connected',
+        connected
+      )}
+      ${renderWalletTestStatusRow(
+        'Balance detected',
+        balanceFetched
+      )}
+      ${renderWalletTestStatusRow(
+        'Signing support detected',
+        signingDetected
+      )}
+    </ul>
+
+    <p class="wallet-test-section-title">
+      Signing methods
+    </p>
+    <ul class="wallet-test-list">
+      ${renderWalletTestStatusRow(
+        'signTransaction',
+        signing.signTransaction
+      )}
+      ${renderWalletTestStatusRow(
+        'signAndSendTransaction',
+        signing.signAndSendTransaction
+      )}
+      ${renderWalletTestStatusRow(
+        'signAllTransactions',
+        signing.signAllTransactions
+      )}
+    </ul>
+
+    ${
+      address
+        ? `<p class="wallet-test-detail"><strong>Address:</strong><br>${address}</p>`
+        : ''
+    }
+
+    ${
+      balanceFetched &&
+      balanceSol !==
+        undefined
+        ? `<p class="wallet-test-detail"><strong>Balance:</strong> ${balanceSol.toFixed(4)} SOL</p>`
+        : ''
+    }
+
+    <p class="wallet-test-verdict ${verdictClass}">
+      ${verdictLabel}
+    </p>
+  `;
+}
+
+async function runWalletCompatibilityTest() {
+  if (
+    !isDevelopment ||
+    !walletTestResults ||
+    !testWalletButton
+  ) {
+    return;
+  }
+
+  walletTestResults.style.display =
+    'block';
+  walletTestResults.innerHTML =
+    'Testing wallet...';
+  testWalletButton.disabled =
+    true;
+
+  selectedWalletId =
+    getSelectedWalletId();
+
+  const network =
+    getSelectedNetwork();
+  const detectedWallet =
+    getDetectedWallet(
+      selectedWalletId
+    );
+  const walletName =
+    detectedWallet?.name ??
+    'Unknown wallet';
+  const provider =
+    getWalletProvider(
+      selectedWalletId
+    );
+
+  if (
+    !provider ||
+    typeof provider.connect !==
+      'function'
+  ) {
+    walletTestResults.innerHTML =
+      renderWalletCompatibilityResults(
+        {
+          walletName,
+          network,
+          connected: false,
+          balanceFetched: false,
+          signing: {
+            signTransaction:
+              false,
+            signAndSendTransaction:
+              false,
+            signAllTransactions:
+              false,
+          },
+          compatible: false,
+          walletStandardSupport:
+            detectedWallet?.source ===
+            'wallet-standard',
+          solanaProviderDetected:
+            false,
+          publicKeyDetected:
+            false,
+          errorMessage:
+            'Wallet not found. Select an installed Solana wallet and try again.',
+        }
+      );
+    testWalletButton.disabled =
+      false;
+    return;
+  }
+
+  try {
+    let address =
+      getProviderPublicKey(
+        provider
+      );
+
+    if (
+      !address
+    ) {
+      const response =
+        await provider.connect();
+
+      address =
+        response.publicKey.toString();
+    }
+
+    connectedWallet =
+      provider;
+    connectedWalletAddress =
+      address;
+
+    walletBox.innerHTML = `
+      <strong>Connected wallet:</strong>
+      <br><br>
+      ${connectedWalletAddress}
+    `;
+
+    connectButton.textContent =
+      'Wallet Connected';
+
+    const connection =
+      new Connection(
+        getRpc(network),
+        'confirmed'
+      );
+
+    const balance =
+      await connection.getBalance(
+        new PublicKey(
+          address
+        )
+      );
+
+    const signing =
+      getWalletSigningSupport(
+        provider
+      );
+    const compatible =
+      walletSupportsTokenCreation(
+        provider
+      );
+    const publicKeyDetected =
+      Boolean(
+        address
+      );
+
+    walletTestResults.innerHTML =
+      renderWalletCompatibilityResults(
+        {
+          walletName,
+          network,
+          connected: true,
+          address,
+          balanceSol:
+            balance /
+            LAMPORTS_PER_SOL,
+          balanceFetched: true,
+          signing,
+          compatible,
+          walletStandardSupport:
+            detectedWallet?.source ===
+            'wallet-standard',
+          solanaProviderDetected:
+            true,
+          publicKeyDetected,
+        }
+      );
+  } catch (error) {
+    console.error(error);
+
+    const signing =
+      getWalletSigningSupport(
+        provider
+      );
+
+    walletTestResults.innerHTML =
+      renderWalletCompatibilityResults(
+        {
+          walletName,
+          network,
+          connected:
+            Boolean(
+              connectedWalletAddress
+            ),
+          address:
+            connectedWalletAddress ||
+            undefined,
+          balanceFetched: false,
+          signing,
+          compatible:
+            walletSupportsTokenCreation(
+              provider
+            ),
+          walletStandardSupport:
+            detectedWallet?.source ===
+            'wallet-standard',
+          solanaProviderDetected:
+            true,
+          publicKeyDetected:
+            Boolean(
+              connectedWalletAddress
+            ),
+          errorMessage:
+            error instanceof
+            Error
+              ? error.message
+              : 'Wallet test failed.',
+        }
+      );
+  } finally {
+    testWalletButton.disabled =
+      false;
+  }
+}
+
 async function resolveConnectedWallet(
   action: string
 ): Promise<{
@@ -3612,20 +4173,30 @@ async function resolveConnectedWallet(
 } | null> {
   logActionState(action);
 
-  const walletId =
-    walletSelect.value ||
-    localStorage.getItem(
-      'preferredWallet'
-    ) ||
-    '';
+  selectedWalletId =
+    getSelectedWalletId();
 
   const provider =
-    getWalletProvider(walletId);
+    getWalletProvider(
+      selectedWalletId
+    );
 
-  if (!provider) {
+  if (
+    !provider ||
+    typeof provider.connect !==
+      'function'
+  ) {
     showUserError(
       'Wallet not found. Connect your wallet and try again.'
     );
+    return null;
+  }
+
+  if (
+    !ensureWalletSupportsTokenCreation(
+      provider
+    )
+  ) {
     return null;
   }
 
@@ -3654,6 +4225,13 @@ async function resolveConnectedWallet(
     provider;
   connectedWalletAddress =
     address;
+  selectedWalletId =
+    getSelectedWalletId();
+
+  localStorage.setItem(
+    'preferredWallet',
+    selectedWalletId
+  );
 
   walletBox.innerHTML = `
     <strong>Connected wallet:</strong>
@@ -4064,11 +4642,28 @@ if (updateLogoInput && updateLogoPreview) {
 }
 connectButton.addEventListener('click', async () => {
   try {
-    const provider =
-      getWalletProvider(walletSelect.value);
+    selectedWalletId =
+      getSelectedWalletId();
 
-    if (!provider) {
+    const provider =
+      getWalletProvider(
+        selectedWalletId
+      );
+
+    if (
+      !provider ||
+      typeof provider.connect !==
+        'function'
+    ) {
       alert('Wallet not found');
+      return;
+    }
+
+    if (
+      !ensureWalletSupportsTokenCreation(
+        provider
+      )
+    ) {
       return;
     }
 
@@ -4082,7 +4677,7 @@ connectButton.addEventListener('click', async () => {
       response.publicKey.toString();
       localStorage.setItem(
   'preferredWallet',
-  walletSelect.value
+  selectedWalletId
 );
 
 localStorage.setItem(
@@ -4119,6 +4714,21 @@ console.log(
     alert('Wallet connection failed');
   }
 });
+
+walletSelect.addEventListener(
+  'change',
+  () => {
+    selectedWalletId =
+      walletSelect.value;
+  }
+);
+
+testWalletButton?.addEventListener(
+  'click',
+  () => {
+    void runWalletCompatibilityTest();
+  }
+);
 
 copyDonationAddressButton.addEventListener(
   'click',
@@ -5363,6 +5973,8 @@ hideActionPopup(POPUP_READ_MS);
 window.addEventListener(
   'load',
   async () => {
+    refreshWalletSelector();
+
     const wasConnected =
       localStorage.getItem(
         'walletConnected'
@@ -5381,26 +5993,57 @@ window.addEventListener(
     }
 
     try {
-      walletSelect.value =
-        preferredWallet;
+      const available =
+        detectAvailableWallets();
 
-      const provider =
-        getWalletProvider(
-          preferredWallet
+      const walletMatch =
+        available.find(
+          (
+            wallet
+          ) =>
+            wallet.id ===
+            preferredWallet
         );
 
-      if (!provider) {
+      if (
+        !walletMatch
+      ) {
+        return;
+      }
+
+      selectedWalletId =
+        walletMatch.id;
+      walletSelect.value =
+        selectedWalletId;
+
+      const provider =
+        walletMatch.provider;
+
+      if (
+        !provider.connect
+      ) {
         return;
       }
 
       const response =
-       await provider.connect();
+       await provider.connect({
+         onlyIfTrusted: true,
+       });
 
       connectedWallet =
         provider;
 
       connectedWalletAddress =
         response.publicKey.toString();
+
+      walletBox.innerHTML = `
+        <strong>Connected wallet:</strong>
+        <br><br>
+        ${connectedWalletAddress}
+      `;
+
+      connectButton.textContent =
+        'Wallet Connected';
 
       console.log(
         'Auto reconnected wallet:',

@@ -10,6 +10,10 @@ import {
 } from './config';
 
 import {
+  WALLET_UNSUPPORTED_SIGNING_MESSAGE,
+} from './wallets';
+
+import {
   AuthorityType,
   createSetAuthorityInstruction,
   TOKEN_PROGRAM_ID,
@@ -94,7 +98,7 @@ export async function revokeAuthorities(
 
   if (!params.walletProvider.signTransaction) {
     throw new Error(
-      'Wallet does not support signTransaction.'
+      WALLET_UNSUPPORTED_SIGNING_MESSAGE
     );
   }
 

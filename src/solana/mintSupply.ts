@@ -10,6 +10,10 @@ import {
 } from './config';
 
 import {
+  WALLET_UNSUPPORTED_SIGNING_MESSAGE,
+} from './wallets';
+
+import {
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
   getAssociatedTokenAddressSync,
@@ -102,7 +106,7 @@ export async function mintSupply(
 
   if (!params.walletProvider.signTransaction) {
     throw new Error(
-      'Wallet does not support signTransaction.'
+      WALLET_UNSUPPORTED_SIGNING_MESSAGE
     );
   }
 
