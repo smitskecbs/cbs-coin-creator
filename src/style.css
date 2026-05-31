@@ -801,6 +801,96 @@ details.accordion[open] .accordion-chevron {
   box-shadow: 0 4px 14px rgba(184, 90, 0, 0.3);
 }
 
+.low-sol-modal-overlay {
+  z-index: 10000;
+}
+
+.low-sol-modal-card {
+  width: min(420px, 100%);
+  max-height: min(90vh, 720px);
+  overflow-y: auto;
+  text-align: left;
+}
+
+.low-sol-modal-card #lowSolBalanceModalTitle {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.low-sol-modal-card .action-popup-icon {
+  margin: 0 auto 8px;
+}
+
+.low-sol-modal-body {
+  margin: 0 0 16px;
+  color: #444444;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.low-sol-modal-body p {
+  margin: 0 0 12px;
+}
+
+.low-sol-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.low-sol-modal-info-box {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 179, 71, 0.14),
+    rgba(255, 255, 255, 0.96)
+  );
+  border: 2px solid rgba(216, 111, 0, 0.28);
+  box-shadow: 0 8px 24px rgba(216, 111, 0, 0.08);
+}
+
+.low-sol-modal-info-title {
+  margin: 0 0 8px;
+  font-weight: 800;
+  color: #d86f00;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.low-sol-modal-info-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #1a1a1a;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.low-sol-modal-actions {
+  margin-top: 0;
+}
+
+#lowSolBalanceModal .secondary-btn {
+  border: 1px solid rgba(216, 111, 0, 0.35);
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#lowSolBalanceModal .primary-btn {
+  background: linear-gradient(135deg, #ffb347, #d86f00) !important;
+  box-shadow: 0 10px 30px rgba(216, 111, 0, 0.22);
+  padding: 12px 18px;
+}
+
+#lowSolBalanceModal .primary-btn:not(:disabled):active {
+  transform: scale(0.97);
+  background: linear-gradient(135deg, #e6952f, #b85a00) !important;
+  box-shadow: 0 4px 14px rgba(184, 90, 0, 0.3);
+}
+
 @media (max-width: 520px) {
   details.accordion > summary {
     padding: 12px 14px;
@@ -808,6 +898,11 @@ details.accordion[open] .accordion-chevron {
 
   #vanitySearchPopup .action-popup-card {
     width: min(360px, 100%);
+    padding: 18px;
+  }
+
+  .low-sol-modal-card {
+    width: 100%;
     padding: 18px;
   }
 }

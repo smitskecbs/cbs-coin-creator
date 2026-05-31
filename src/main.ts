@@ -883,6 +883,68 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
   </div>
 </div>
+
+    <div
+      id="lowSolBalanceModal"
+      class="action-popup-overlay low-sol-modal-overlay"
+      style="display: none;"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lowSolBalanceModalTitle"
+    >
+      <div class="action-popup-card low-sol-modal-card">
+        <span
+          class="action-popup-icon action-popup-icon--error"
+          aria-hidden="true"
+        >!</span>
+
+        <h3 id="lowSolBalanceModalTitle">
+          Low SOL Balance
+        </h3>
+
+        <div class="low-sol-modal-body">
+          <p>
+            Your wallet currently has less than 0.6 SOL.
+          </p>
+          <p>
+            Phantom may block token creation because it keeps a safety reserve in your wallet.
+          </p>
+          <p>
+            <strong>This is NOT a CBS fee.</strong>
+          </p>
+          <p>
+            Only Solana network fees and Metaplex account rent are spent during token creation.
+          </p>
+        </div>
+
+        <div class="low-sol-modal-info-box">
+          <p class="low-sol-modal-info-title">
+            Recommended balance:
+          </p>
+          <ul class="low-sol-modal-info-list">
+            <li>Devnet: 0.6 SOL</li>
+            <li>Mainnet: 0.6 SOL</li>
+          </ul>
+        </div>
+
+        <div class="action-popup-actions low-sol-modal-actions">
+          <button
+            id="lowSolUnderstandButton"
+            type="button"
+            class="primary-btn"
+          >
+            I Understand
+          </button>
+          <button
+            id="lowSolCancelButton"
+            type="button"
+            class="secondary-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 `;
 
@@ -1171,6 +1233,21 @@ const actionPopupTryAgainButton =
 const actionPopupCancelButton =
   document.getElementById(
     'actionPopupCancel'
+  ) as HTMLButtonElement;
+
+const lowSolBalanceModal =
+  document.getElementById(
+    'lowSolBalanceModal'
+  ) as HTMLDivElement;
+
+const lowSolUnderstandButton =
+  document.getElementById(
+    'lowSolUnderstandButton'
+  ) as HTMLButtonElement;
+
+const lowSolCancelButton =
+  document.getElementById(
+    'lowSolCancelButton'
   ) as HTMLButtonElement;
 
 console.log(
@@ -1788,6 +1865,15 @@ async function executePendingVanityMintFlow(
   pendingVanityTokenCreate =
     pending;
 
+  if (
+    !(await ensureWalletBalanceForTokenCreation(
+      pending.network,
+      pending.writeWalletAddress
+    ))
+  ) {
+    return;
+  }
+
   const uploadedMetadata =
     await ensurePendingVanityMetadataUploaded(
       pending,
@@ -2039,41 +2125,54 @@ function buildCreateUmiTokenParams(
 const PHANTOM_PREFLIGHT_MIN_LAMPORTS =
   600_000_000;
 
-const MAINNET_BALANCE_WARNING =
-  'Your wallet has less than 0.6 SOL. Phantom may block token creation because of its safety reserve. This is not a CBS fee. Only Solana/Metaplex rent and network fees are spent.';
+let lowSolBalanceModalResolver:
+  | ((
+      proceed: boolean
+    ) => void)
+  | null = null;
 
-const DEVNET_BALANCE_WARNING =
-  "Your devnet wallet needs more devnet SOL for Phantom's safety reserve. Use the Solana devnet faucet.";
+function hideLowSolBalanceModal() {
+  lowSolBalanceModal.style.display =
+    'none';
+}
 
-function showPreflightBalanceWarning(
-  network: SolanaNetwork,
-  balanceSol: number
+function resolveLowSolBalanceModal(
+  proceed: boolean
 ) {
-  const message =
-    network ===
-    'mainnet'
-      ? MAINNET_BALANCE_WARNING
-      : DEVNET_BALANCE_WARNING;
+  hideLowSolBalanceModal();
+
+  const resolver =
+    lowSolBalanceModalResolver;
+
+  lowSolBalanceModalResolver =
+    null;
+  resolver?.(proceed);
+}
+
+function showLowSolBalanceModal(
+  balanceSol: number
+): Promise<boolean> {
+  if (
+    lowSolBalanceModalResolver
+  ) {
+    resolveLowSolBalanceModal(
+      false
+    );
+  }
 
   progressStatus.className =
     'wallet-box preflight-balance-warning';
   progressStatus.innerHTML =
-    message;
+    `Your wallet has ${balanceSol.toFixed(4)} SOL. Recommended balance is 0.6 SOL.`;
 
-  showUserError(message);
-  showActionPopup(
-    network ===
-      'mainnet'
-      ? 'Low SOL balance'
-      : 'Low devnet SOL',
-    `${message}<br><br>Current balance: ${balanceSol.toFixed(4)} SOL`,
-    {
-      showStopButton: false,
-      state: 'error',
+  lowSolBalanceModal.style.display =
+    'flex';
+
+  return new Promise(
+    (resolve) => {
+      lowSolBalanceModalResolver =
+        resolve;
     }
-  );
-  hideActionPopup(
-    POPUP_READ_MS
   );
 }
 
@@ -2101,13 +2200,10 @@ async function ensureWalletBalanceForTokenCreation(
     return true;
   }
 
-  showPreflightBalanceWarning(
-    network,
+  return showLowSolBalanceModal(
     balance /
       LAMPORTS_PER_SOL
   );
-
-  return false;
 }
 
 async function createUmiTokenFromPendingVanity(
@@ -3048,6 +3144,26 @@ actionPopupCancelButton.addEventListener(
     clearWalletConfirmTimeout();
     hideActionPopup();
     endAction();
+  }
+);
+
+lowSolUnderstandButton.addEventListener(
+  'click',
+  () => {
+    resolveLowSolBalanceModal(
+      false
+    );
+  }
+);
+
+lowSolCancelButton.addEventListener(
+  'click',
+  () => {
+    progressStatus.innerHTML =
+      'Token creation cancelled.';
+    resolveLowSolBalanceModal(
+      false
+    );
   }
 );
 
@@ -4408,12 +4524,6 @@ tokenForm.addEventListener('submit', async (event) => {
       return;
     }
 
-    const uploadedMetadata =
-      await uploadCreateTokenMetadata(
-        metadataInput,
-        tokenLogoFile
-      );
-
     if (
       !(await ensureWalletBalanceForTokenCreation(
         selectedNetwork,
@@ -4422,6 +4532,12 @@ tokenForm.addEventListener('submit', async (event) => {
     ) {
       return;
     }
+
+    const uploadedMetadata =
+      await uploadCreateTokenMetadata(
+        metadataInput,
+        tokenLogoFile
+      );
 
     showWalletConfirmPopup(
       'Creating token...'
