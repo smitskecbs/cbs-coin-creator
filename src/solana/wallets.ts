@@ -15,22 +15,46 @@ import type {
   SolanaNetwork,
 } from './config';
 
+import {
+  adaptWalletProvider,
+  normalizeWalletPublicKey,
+} from './walletPublicKey';
+
+export {
+  adaptWalletProvider,
+  connectAndNormalizeWalletPublicKey,
+  getWalletPublicKeyDebugInfo,
+  logWalletDebug,
+  normalizeWalletPublicKey,
+  readWalletPublicKey,
+  toWalletPublicKey,
+  WALLET_PUBLIC_KEY_READ_ERROR,
+} from './walletPublicKey';
+
+import {
+  PublicKey,
+} from '@solana/web3.js';
+
 export type SolanaWalletProvider = {
   connect?: (
     options?: {
       onlyIfTrusted?: boolean;
     }
   ) => Promise<{
-    publicKey: {
-      toString(): string;
-    };
+    publicKey:
+      | PublicKey
+      | {
+          toString(): string;
+        };
   }>;
 
   disconnect?: () => Promise<void>;
 
-  publicKey?: {
-    toString(): string;
-  };
+  publicKey?:
+    | PublicKey
+    | {
+        toString(): string;
+      };
 
   signTransaction?: (
     transaction: unknown
@@ -197,9 +221,15 @@ function hasSolanaPublicKeySupport(
     return true;
   }
 
-  return isLikelySolanaAddress(
-    provider.publicKey.toString()
-  );
+  try {
+    return isLikelySolanaAddress(
+      normalizeWalletPublicKey(
+        provider.publicKey
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isAllowedInjectedSolanaWallet(
@@ -820,37 +850,195 @@ function createWalletStandardProvider(
   );
 }
 
-function registerWallet(
-  wallet: DetectedWallet,
-  seenProviders: Set<
-    SolanaWalletProvider
-  >
-) {
+function normalizeWalletBrand(
+  wallet: DetectedWallet
+): string {
+  const name =
+    wallet.name.toLowerCase();
+  const id =
+    wallet.id.toLowerCase();
+
   if (
-    seenProviders.has(
-      wallet.provider
+    name.includes(
+      'phantom'
+    ) ||
+    id.includes(
+      'phantom'
     )
   ) {
-    return;
+    return 'phantom';
   }
 
-  seenProviders.add(
-    wallet.provider
-  );
+  if (
+    name.includes(
+      'solflare'
+    ) ||
+    id.includes(
+      'solflare'
+    )
+  ) {
+    return 'solflare';
+  }
 
   if (
-    providerRegistry.has(
+    name.includes(
+      'backpack'
+    ) ||
+    id.includes(
+      'backpack'
+    )
+  ) {
+    return 'backpack';
+  }
+
+  if (
+    name.includes(
+      'glow'
+    ) ||
+    id.includes(
+      'glow'
+    )
+  ) {
+    return 'glow';
+  }
+
+  if (
+    name.includes(
+      'metamask'
+    ) ||
+    id.includes(
+      'metamask'
+    )
+  ) {
+    return 'metamask';
+  }
+
+  return name.replace(
+    /[^a-z0-9]+/g,
+    '-'
+  );
+}
+
+function walletSourcePriority(
+  wallet: DetectedWallet
+): number {
+  if (
+    wallet.source ===
+    'wallet-standard'
+  ) {
+    return 0;
+  }
+
+  if (
+    ALLOWED_INJECTED_WALLET_IDS.has(
       wallet.id
     )
   ) {
-    wallet.id =
-      `${wallet.id}-${wallet.source}`;
+    return 1;
   }
 
-  providerRegistry.set(
-    wallet.id,
-    wallet
-  );
+  return 2;
+}
+
+function getStableWalletId(
+  brand: string,
+  wallet: DetectedWallet
+): string {
+  switch (brand) {
+    case 'phantom':
+      return 'phantom';
+    case 'solflare':
+      return 'solflare';
+    case 'backpack':
+      return 'backpack';
+    case 'glow':
+      return 'glow';
+    case 'metamask':
+      return 'metamask-solana';
+    default:
+      return wallet.id;
+  }
+}
+
+function shouldReplaceWalletCandidate(
+  existing: DetectedWallet,
+  candidate: DetectedWallet
+): boolean {
+  const existingPriority =
+    walletSourcePriority(
+      existing
+    );
+  const candidatePriority =
+    walletSourcePriority(
+      candidate
+    );
+
+  if (
+    candidatePriority <
+    existingPriority
+  ) {
+    return true;
+  }
+
+  if (
+    candidatePriority >
+    existingPriority
+  ) {
+    return false;
+  }
+
+  return false;
+}
+
+function finalizeDetectedWallet(
+  wallet: DetectedWallet,
+  brand: string
+): DetectedWallet {
+  return {
+    ...wallet,
+    id:
+      getStableWalletId(
+        brand,
+        wallet
+      ),
+    provider:
+      adaptWalletProvider(
+        wallet.provider
+      ),
+  };
+}
+
+function registerWalletByBrand(
+  wallet: DetectedWallet,
+  brandMap: Map<
+    string,
+    DetectedWallet
+  >
+) {
+  const brand =
+    normalizeWalletBrand(
+      wallet
+    );
+  const existing =
+    brandMap.get(
+      brand
+    );
+
+  if (
+    !existing ||
+    shouldReplaceWalletCandidate(
+      existing,
+      wallet
+    )
+  ) {
+    brandMap.set(
+      brand,
+      finalizeDetectedWallet(
+        wallet,
+        brand
+      )
+    );
+  }
 }
 
 function detectInjectedWallet(
@@ -1062,22 +1250,30 @@ function detectWalletStandardProviders(): DetectedWallet[] {
 export function detectAvailableWallets(): DetectedWallet[] {
   providerRegistry.clear();
 
-  const seenProviders =
-    new Set<
-      SolanaWalletProvider
+  const brandMap =
+    new Map<
+      string,
+      DetectedWallet
     >();
 
   for (const wallet of detectInjectedWallets()) {
-    registerWallet(
+    registerWalletByBrand(
       wallet,
-      seenProviders
+      brandMap
     );
   }
 
   for (const wallet of detectWalletStandardProviders()) {
-    registerWallet(
+    registerWalletByBrand(
       wallet,
-      seenProviders
+      brandMap
+    );
+  }
+
+  for (const wallet of brandMap.values()) {
+    providerRegistry.set(
+      wallet.id,
+      wallet
     );
   }
 

@@ -6,12 +6,17 @@ import logoUrl from './assets/logo.png';
 import tokenBuilderBannerUrl from './assets/tokenbuilder.png';
 
 import {
+  connectAndNormalizeWalletPublicKey,
   detectAvailableWallets,
   getDetectedWallet,
   getWalletProvider,
+  getWalletPublicKeyDebugInfo,
+  logWalletDebug,
+  readWalletPublicKey,
   setWalletNetworkResolver,
   subscribeToWalletChanges,
   walletSupportsTokenCreation,
+  WALLET_PUBLIC_KEY_READ_ERROR,
   WALLET_UNSUPPORTED_SIGNING_MESSAGE,
   type SolanaWalletProvider,
 } from './solana/wallets';
@@ -3732,21 +3737,107 @@ function showUserError(
   alert(message);
 }
 
-function getProviderPublicKey(
-  provider: WalletProvider
-): string | null {
-  const wallet =
-    provider as WalletProvider & {
-      publicKey?: {
-        toString(): string;
-      };
-    };
+function clearStaleWalletConnection() {
+  connectedWallet =
+    null;
+  connectedWalletAddress =
+    '';
+  connectButton.textContent =
+    'Connect Wallet';
+  walletBox.innerHTML =
+    'No wallet connected';
+}
 
-  if (wallet.publicKey) {
-    return wallet.publicKey.toString();
+function logSelectedWalletDebug(
+  provider: WalletProvider,
+  address: string,
+  phase: string
+) {
+  const detectedWallet =
+    getDetectedWallet(
+      getSelectedWalletId()
+    );
+  const debugInfo =
+    getWalletPublicKeyDebugInfo(
+      provider
+    );
+
+  logWalletDebug(
+    phase,
+    {
+      selectedWalletProviderName:
+        detectedWallet?.name ??
+        'Unknown wallet',
+      providerSource:
+        detectedWallet?.source ??
+        'unknown',
+      rawPublicKeyType:
+        debugInfo.rawPublicKeyType,
+      normalizedPublicKey:
+        debugInfo.normalizedPublicKey,
+      connectedWalletAddressUsed:
+        address,
+    }
+  );
+}
+
+async function resolveWalletAddressFromProvider(
+  provider: WalletProvider,
+  options?: {
+    onlyIfTrusted?: boolean;
+    forceReconnect?: boolean;
+  }
+): Promise<string> {
+  let address =
+    readWalletPublicKey(
+      provider
+    );
+
+  if (
+    connectedWalletAddress &&
+    address &&
+    connectedWalletAddress !==
+      address
+  ) {
+    logWalletDebug(
+      'clearing stale wallet address before reconnect',
+      {
+        storedAddress:
+          connectedWalletAddress,
+        providerAddress:
+          address,
+      }
+    );
+    clearStaleWalletConnection();
+    address =
+      null;
   }
 
-  return null;
+  if (
+    !address ||
+    options?.forceReconnect
+  ) {
+    try {
+      address =
+        await connectAndNormalizeWalletPublicKey(
+          provider,
+          {
+            onlyIfTrusted:
+              options?.onlyIfTrusted,
+          }
+        );
+    } catch (error) {
+      console.error(
+        error
+      );
+      showUserError(
+        WALLET_PUBLIC_KEY_READ_ERROR
+      );
+      throw error;
+    }
+  }
+
+  return address;
 }
 
 function showWalletSigningUnsupported() {
@@ -4041,20 +4132,10 @@ async function runWalletCompatibilityTest() {
   }
 
   try {
-    let address =
-      getProviderPublicKey(
+    const address =
+      await resolveWalletAddressFromProvider(
         provider
       );
-
-    if (
-      !address
-    ) {
-      const response =
-        await provider.connect();
-
-      address =
-        response.publicKey.toString();
-    }
 
     connectedWallet =
       provider;
@@ -4069,6 +4150,12 @@ async function runWalletCompatibilityTest() {
 
     connectButton.textContent =
       'Wallet Connected';
+
+    logSelectedWalletDebug(
+      provider,
+      address,
+      'runWalletCompatibilityTest'
+    );
 
     const connection =
       new Connection(
@@ -4201,22 +4288,42 @@ async function resolveConnectedWallet(
   }
 
   let address =
-    getProviderPublicKey(
+    readWalletPublicKey(
       provider
     );
 
-  if (!address) {
+  if (
+    !address ||
+    (
+      connectedWalletAddress &&
+      connectedWallet !==
+        provider
+    )
+  ) {
     try {
-      const response =
-        await provider.connect();
-
       address =
-        response.publicKey.toString();
-    } catch (error) {
-      console.error(error);
-      showUserError(
-        'Could not read the connected wallet. Open your wallet and try again.'
-      );
+        await resolveWalletAddressFromProvider(
+          provider
+        );
+    } catch {
+      return null;
+    }
+  } else if (
+    connectedWalletAddress &&
+    address &&
+    connectedWalletAddress !==
+      address
+  ) {
+    try {
+      address =
+        await resolveWalletAddressFromProvider(
+          provider,
+          {
+            forceReconnect:
+              true,
+          }
+        );
+    } catch {
       return null;
     }
   }
@@ -4232,6 +4339,10 @@ async function resolveConnectedWallet(
     'preferredWallet',
     selectedWalletId
   );
+  localStorage.setItem(
+    'walletConnected',
+    'true'
+  );
 
   walletBox.innerHTML = `
     <strong>Connected wallet:</strong>
@@ -4241,6 +4352,12 @@ async function resolveConnectedWallet(
 
   connectButton.textContent =
     'Wallet Connected';
+
+  logSelectedWalletDebug(
+    provider,
+    address,
+    'resolveConnectedWallet'
+  );
 
   console.log(
     '[state] connected wallet (fresh):',
@@ -4667,14 +4784,16 @@ connectButton.addEventListener('click', async () => {
       return;
     }
 
-    const response =
-      await provider.connect();
+    const address =
+      await resolveWalletAddressFromProvider(
+        provider
+      );
 
     connectedWallet =
       provider;
 
     connectedWalletAddress =
-      response.publicKey.toString();
+      address;
       localStorage.setItem(
   'preferredWallet',
   selectedWalletId
@@ -4684,6 +4803,11 @@ localStorage.setItem(
   'walletConnected',
   'true'
 );
+    logSelectedWalletDebug(
+      provider,
+      address,
+      'connectWallet'
+    );
     console.log(
   'Connected wallet provider:',
   connectedWallet
@@ -4718,8 +4842,18 @@ console.log(
 walletSelect.addEventListener(
   'change',
   () => {
-    selectedWalletId =
+    const nextWalletId =
       walletSelect.value;
+
+    if (
+      nextWalletId !==
+      selectedWalletId
+    ) {
+      clearStaleWalletConnection();
+    }
+
+    selectedWalletId =
+      nextWalletId;
   }
 );
 
@@ -6025,16 +6159,31 @@ window.addEventListener(
         return;
       }
 
-      const response =
-       await provider.connect({
-         onlyIfTrusted: true,
-       });
+      clearStaleWalletConnection();
+
+      const address =
+        await resolveWalletAddressFromProvider(
+          provider,
+          {
+            onlyIfTrusted:
+              true,
+          }
+        );
 
       connectedWallet =
         provider;
 
       connectedWalletAddress =
-        response.publicKey.toString();
+        address;
+
+      localStorage.setItem(
+        'preferredWallet',
+        selectedWalletId
+      );
+      localStorage.setItem(
+        'walletConnected',
+        'true'
+      );
 
       walletBox.innerHTML = `
         <strong>Connected wallet:</strong>
@@ -6045,11 +6194,21 @@ window.addEventListener(
       connectButton.textContent =
         'Wallet Connected';
 
+      logSelectedWalletDebug(
+        provider,
+        address,
+        'autoReconnectWallet'
+      );
+
       console.log(
         'Auto reconnected wallet:',
         connectedWalletAddress
       );
     } catch (error) {
+      clearStaleWalletConnection();
+      localStorage.removeItem(
+        'walletConnected'
+      );
       console.log(
         'Auto reconnect skipped.'
       );
