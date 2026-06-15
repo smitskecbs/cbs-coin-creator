@@ -1,26 +1,58 @@
-const ALLOWED_ORIGIN =
-  "https://token-builder.cbs-coin.com";
+const ALLOWED_ORIGINS = [
+  "https://token-builder.cbs-coin.com",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
 
-function setCorsHeaders(res) {
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    ALLOWED_ORIGIN
-  );
+function setCorsHeaders(req, res) {
+  const origin =
+    req.headers.origin;
+
+  if (
+    origin &&
+    ALLOWED_ORIGINS.includes(origin)
+  ) {
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      origin
+    );
+  }
+
   res.setHeader(
     "Access-Control-Allow-Methods",
     "POST, OPTIONS"
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
+    "Content-Type"
   );
 }
 
 export default async function handler(req, res) {
-  setCorsHeaders(res);
+  setCorsHeaders(req, res);
+
+  console.log(
+    "upload-to-pinata request",
+    {
+      method: req.method,
+      origin:
+        req.headers.origin ??
+        "(none)",
+      allowedOrigins:
+        ALLOWED_ORIGINS,
+    }
+  );
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
+  }
+
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      allowedOrigins:
+        ALLOWED_ORIGINS,
+    });
   }
 
   if (req.method !== "POST") {
