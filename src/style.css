@@ -1,12 +1,26 @@
 :root {
+  --space-sm: 16px;
+  --space-md: 32px;
   font-family: Inter, system-ui, sans-serif;
   color: #1a1a1a;
   background: #f5f0e8;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
   background:
     radial-gradient(1100px 520px at 30% 0%, rgba(255, 179, 71, 0.16), transparent 60%),
     radial-gradient(900px 420px at 85% 10%, rgba(237, 199, 137, 0.18), transparent 55%),
@@ -23,8 +37,27 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 24px 24px;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--space-sm) 20px 28px;
+  overflow-x: hidden;
+}
+
+.site-hero,
+.page-section,
+.support-section,
+.site-footer {
+  width: 100%;
+  max-width: 720px;
+}
+
+.site-hero {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
 }
 
 .site-banner {
@@ -36,11 +69,126 @@ body {
   box-shadow: 0 8px 28px rgba(216, 111, 0, 0.1);
 }
 
+.site-hero-subtitle {
+  margin: 0;
+  max-width: 520px;
+  font-size: clamp(15px, 3vw, 17px);
+  font-weight: 700;
+  line-height: 1.45;
+  color: #555555;
+}
+
+.solana-logomark {
+  display: inline;
+  width: auto;
+  height: 0.92em;
+  max-height: 16px;
+  margin: 0 2px;
+  vertical-align: -0.12em;
+}
+
+.community-message {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 2px;
+}
+
+.community-message-panel {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(216, 111, 0, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 252, 248, 0.82);
+  text-align: center;
+}
+
+.community-message-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 0 auto;
+  color: #333333;
+  font-size: clamp(13px, 3vw, 14px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.community-message-heart {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: #d86f00;
+}
+
+.community-message-copy {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+}
+
+.community-message-lead,
+.community-message-note {
+  margin: 0;
+  max-width: 360px;
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.community-message-lead {
+  color: #555555;
+}
+
+.community-message-emphasis {
+  color: #9a4f00;
+  font-weight: 700;
+}
+
+.page-section {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.cbs-overview-card {
+  padding: 20px 22px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid rgba(216, 111, 0, 0.18);
+  box-shadow: 0 10px 32px rgba(216, 111, 0, 0.07);
+  text-align: left;
+}
+
+.cbs-overview-title {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  color: #111111;
+}
+
+.cbs-overview-text {
+  margin: 0 0 12px;
+  color: #555555;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.cbs-overview-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: #444444;
+  line-height: 1.55;
+  font-weight: 650;
+}
+
+.cbs-overview-list li + li {
+  margin-top: 6px;
+}
+
 .hero-card {
-  max-width: 720px;
-  padding: 20px 32px 36px;
+  padding: 24px 24px 32px;
   border: 1px solid rgba(216, 111, 0, 0.2);
-  border-radius: 28px;
+  border-radius: 20px;
   background: #ffffff;
   box-shadow: 0 10px 40px rgba(216, 111, 0, 0.08);
   text-align: center;
@@ -205,10 +353,10 @@ button.primary-btn[disabled] {
 .wallet-box {
   margin-top: 24px;
   padding: 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 179, 71, 0.18);
-  color: rgba(241, 241, 246, 0.86);
+  border-radius: 16px;
+  background: #fafafa;
+  border: 1px solid rgba(216, 111, 0, 0.15);
+  color: #444444;
   word-break: break-word;
 }
 .wallet-panel {
@@ -341,20 +489,16 @@ button.primary-btn[disabled] {
 .vanity-link {
   display: inline-block;
   margin-top: 22px;
-  color: #ffb347;
+  color: #d86f00;
   font-weight: 800;
   text-decoration: none;
 }
 
-.wallet-box {
-  margin-top: 24px;
-  padding: 18px;
-  border-radius: 18px;
-  background: #fafafa;
-  border: 1px solid rgba(216, 111, 0, 0.15);
-  color: #444;
-  word-break: break-word;
+.vanity-link:hover {
+  color: #b85a00;
+  text-decoration: underline;
 }
+
 .token-form {
   margin-top: 34px;
   display: grid;
@@ -736,34 +880,100 @@ details.accordion[open] .accordion-chevron {
 }
 
 .support-footer {
-  width: 100%;
-  max-width: 460px;
-  margin-top: 8px;
-  padding: 18px 20px 24px;
+  display: none;
+}
+
+.cbs-support-block {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 252, 248, 0.85);
+  border: 1px solid rgba(216, 111, 0, 0.1);
+  box-shadow: none;
   text-align: center;
+}
+
+.cbs-support-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #333333;
+}
+
+.cbs-support-text {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
   color: #777777;
-  border-top: 1px solid rgba(216, 111, 0, 0.12);
+  line-height: 1.45;
 }
 
-.support-footer-brand {
-  margin: 0 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #888888;
-}
-
-.support-footer-label {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #999999;
-}
-
-.support-footer-wallet {
+.cbs-support-wallet {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.cbs-site-footer {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) 0 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
+}
+
+.cbs-footer-inner {
+  display: grid;
+  gap: 16px;
+  text-align: center;
+}
+
+.cbs-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 18px;
+}
+
+.cbs-footer-links a {
+  color: #d86f00;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.cbs-footer-links a:hover {
+  color: #b85a00;
+  text-decoration: underline;
+}
+
+.cbs-footer-open-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #333333;
+}
+
+.cbs-footer-open-text {
+  margin: 0 auto;
+  max-width: 640px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #666666;
+}
+
+.cbs-footer-badges {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d86f00;
+}
+
+.cbs-footer-tagline {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #777777;
+  font-weight: 650;
 }
 
 .support-footer-address {
@@ -778,13 +988,14 @@ details.accordion[open] .accordion-chevron {
 
 .support-footer-copy {
   border: 1px solid rgba(216, 111, 0, 0.22);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.95);
   color: #666666;
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  min-height: 36px;
   transition:
     background 120ms ease,
     border-color 120ms ease;
@@ -1016,6 +1227,48 @@ body.low-sol-modal-open {
   transform: scale(0.97);
   background: linear-gradient(135deg, #e6952f, #b85a00) !important;
   box-shadow: 0 4px 14px rgba(184, 90, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .site-hero,
+  .page-section,
+  .support-section,
+  .site-footer {
+    max-width: 100%;
+  }
+
+  .site-banner {
+    max-width: 100%;
+  }
+
+  .hero-card {
+    padding: 18px 14px 24px;
+    border-radius: 18px;
+  }
+
+  .cbs-overview-card {
+    padding: 16px;
+  }
+
+  .cbs-footer-links {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .wallet-panel-actions .primary-btn,
+  .wallet-panel-actions .secondary-btn {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .token-form input,
+  .token-form textarea,
+  .token-form select,
+  .wallet-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 @media (max-width: 520px) {

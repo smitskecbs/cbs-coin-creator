@@ -161,18 +161,79 @@ const isDevelopment =
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="app-shell">
-    <img
-      class="site-banner"
-      src="${tokenBuilderBannerUrl}"
-      alt="CBS Token Builder"
-    />
+    <header class="site-hero">
+      <img
+        class="site-banner"
+        src="${tokenBuilderBannerUrl}"
+        alt="CBS Token Builder"
+      />
 
-    <section class="hero-card">
-      <p class="hero-text">
-        Create your own Solana token for free.
-        No platform fees.
+      <p class="site-hero-subtitle">
+        Create or manage Solana
+        <img
+          class="solana-logomark"
+          src="/assets/solana-logomark.svg"
+          alt=""
+          width="16"
+          height="12"
+          loading="lazy"
+        />
+        tokens with simple, community-built tools.
       </p>
 
+      <div
+        class="community-message"
+        aria-labelledby="community-message-heading"
+      >
+        <div class="community-message-panel">
+          <h3
+            class="community-message-title"
+            id="community-message-heading"
+          >
+            <svg
+              class="community-message-heart"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                fill="currentColor"
+              />
+            </svg>
+            Built for the Solana Community
+          </h3>
+          <div class="community-message-copy">
+            <p class="community-message-lead">
+              The CBS Token Builder is
+              <strong class="community-message-emphasis">free to use</strong>.
+            </p>
+            <p class="community-message-note">
+              CBS does not charge platform fees.
+            </p>
+            <p class="community-message-note">
+              You only pay Solana network fees and optional third-party service fees when using external services.
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="cbs-overview-card page-section">
+      <h2 class="cbs-overview-title">
+        What can you do here?
+      </h2>
+      <p class="cbs-overview-text">
+        Use the CBS Token Builder to create SPL tokens, configure token details, add metadata and prepare your project for launch.
+      </p>
+      <ul class="cbs-overview-list">
+        <li>Create a Solana token</li>
+        <li>Add name, symbol, supply and decimals</li>
+        <li>Add or manage metadata where supported</li>
+        <li>Prepare your token for launch and community use</li>
+      </ul>
+    </section>
+
+    <section class="hero-card page-section">
       <div class="network-panel">
         <label
           class="network-panel-label"
@@ -186,7 +247,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           class="network-select"
         >
           <option value="devnet">Devnet</option>
-          <option value="mainnet">Mainnet</option>
+          <option value="mainnet" selected>Mainnet</option>
         </select>
       </div>
 
@@ -797,14 +858,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </details>
     </section>
 
-    <footer class="support-footer">
-      <p class="support-footer-brand">
-        Built with CBS Token Builder
+    <section class="cbs-support-block support-section">
+      <h2 class="cbs-support-title">
+        Support CBS Ecosystem
+      </h2>
+      <p class="cbs-support-text">
+        Optional donations help fund development and infrastructure.
       </p>
-      <p class="support-footer-label">
-        Support development
-      </p>
-      <div class="support-footer-wallet">
+      <div class="cbs-support-wallet">
         <code
           id="donationWalletDisplay"
           class="support-footer-address"
@@ -815,8 +876,51 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           type="button"
           class="support-footer-copy"
         >
-          Copy
+          Copy address
         </button>
+      </div>
+    </section>
+
+    <footer class="cbs-site-footer site-footer">
+      <div class="cbs-footer-inner">
+        <nav
+          class="cbs-footer-links"
+          aria-label="CBS ecosystem links"
+        >
+          <a
+            href="https://tools.cbs-coin.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >CBS Tools</a>
+          <a
+            href="https://cbs-coin.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >CBS Coin</a>
+          <a
+            href="https://github.com/smitskecbs"
+            target="_blank"
+            rel="noopener noreferrer"
+          >GitHub</a>
+        </nav>
+
+        <div class="cbs-footer-open">
+          <h3 class="cbs-footer-open-title">
+            Built in the Open
+          </h3>
+          <p class="cbs-footer-open-text">
+            CBS Tools is developed publicly and transparently.
+            Source code, improvements and community contributions can be followed on GitHub.
+          </p>
+        </div>
+
+        <p class="cbs-footer-badges">
+          Open Source • Community Driven • Built on Solana
+        </p>
+
+        <p class="cbs-footer-tagline">
+          Community-built tools for Solana builders.
+        </p>
       </div>
     </footer>
 
@@ -4880,7 +4984,7 @@ copyDonationAddressButton.addEventListener(
     window.setTimeout(
       () => {
         copyDonationAddressButton.textContent =
-          'Copy';
+          'Copy address';
       },
       1600
     );
