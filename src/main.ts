@@ -329,7 +329,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       >
         <strong>Pending vanity mint found</strong>
         <p class="helper-text pending-vanity-warning">
-          Pending vanity mint is stored only on this device.
+          Vanity mint keys are kept only in this browser session and are not saved after refresh.
         </p>
         <p>
           <strong>Status:</strong>
@@ -467,6 +467,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 <p class="helper-text vanity-authenticity-warning">
   Vanity mint addresses do not prove authenticity.
+</p>
+
+<p class="helper-text vanity-session-warning">
+  Vanity mint keys are kept only in this browser session and are not saved after refresh.
 </p>
 
     </div>
@@ -1602,252 +1606,41 @@ const WALLET_CONFIRM_TIMEOUT_MS =
 const PENDING_VANITY_MINT_STORAGE_KEY =
   'cbs_pending_vanity_mint';
 
-type StoredPendingVanityMint = {
-  status: 'Pending vanity mint';
-  network?: SolanaNetwork;
-  address: string;
-  secretKey: number[];
-  attempts: number;
-  tokenName: string;
-  symbol: string;
-  metadataUrl?: string;
-  tokenDescription?: string;
-  tokenTags?: string[];
-  tokenWebsite?: string;
-  tokenTelegram?: string;
-  tokenDiscord?: string;
-  tokenTwitter?: string;
-  tokenFacebook?: string;
-  decimals: number;
-  supply: number;
-  revokeMintAfterCreate: boolean;
-  revokeFreezeAfterCreate: boolean;
-  vanityFields: {
-    pattern: string;
-    endPattern: string;
-    position: string;
-    ignoreCase: boolean;
-    maxAttempts: number;
-  };
-};
+const VANITY_SESSION_EXPIRED_MESSAGE =
+  'Vanity mint session expired. Please start a new vanity search.';
 
-function savePendingVanityMintToStorage(
-  pending: PendingVanityTokenCreate
-) {
-  const stored: StoredPendingVanityMint =
-    {
-      status:
-        'Pending vanity mint',
-      network:
-        pending.network,
-      address:
-        pending.vanity
-          .address,
-      secretKey:
-        pending.vanity
-          .secretKey,
-      attempts:
-        pending.vanity
-          .attempts,
-      tokenName:
-        pending.tokenName,
-      symbol:
-        pending.symbol,
-      metadataUrl:
-        pending.uploadedMetadata
-          ?.metadataUrl,
-      tokenDescription:
-        pending.metadataInput
-          .tokenDescription,
-      tokenTags:
-        pending.metadataInput
-          .tokenTags,
-      tokenWebsite:
-        pending.metadataInput
-          .tokenWebsite,
-      tokenTelegram:
-        pending.metadataInput
-          .tokenTelegram,
-      tokenDiscord:
-        pending.metadataInput
-          .tokenDiscord,
-      tokenTwitter:
-        pending.metadataInput
-          .tokenTwitter,
-      tokenFacebook:
-        pending.metadataInput
-          .tokenFacebook,
-      decimals:
-        pending.decimals,
-      supply:
-        pending.supply,
-      revokeMintAfterCreate:
-        pending.revokeMintAfterCreate,
-      revokeFreezeAfterCreate:
-        pending.revokeFreezeAfterCreate,
-      vanityFields:
-        pending.vanityFields,
-    };
+function purgeLegacyPendingVanityMintStorage(): boolean {
+  const hadLegacy =
+    localStorage.getItem(
+      PENDING_VANITY_MINT_STORAGE_KEY
+    ) !== null;
 
-  localStorage.setItem(
-    PENDING_VANITY_MINT_STORAGE_KEY,
-    JSON.stringify(stored)
-  );
-
-  console.log(
-    '[vanity] saved pending mint to local storage:',
-    stored.address
-  );
-}
-
-function loadPendingVanityMintFromStorage():
-  | StoredPendingVanityMint
-  | null {
-  try {
-    const raw =
-      localStorage.getItem(
-        PENDING_VANITY_MINT_STORAGE_KEY
-      );
-
-    if (!raw) {
-      return null;
-    }
-
-    const parsed =
-      JSON.parse(
-        raw
-      ) as StoredPendingVanityMint;
-
-    if (
-      parsed.status !==
-        'Pending vanity mint' ||
-      !parsed.address ||
-      !Array.isArray(
-        parsed.secretKey
-      ) ||
-      parsed.secretKey
-        .length === 0
-    ) {
-      return null;
-    }
-
-    return parsed;
-  } catch (error) {
-    console.warn(
-      '[vanity] failed to load pending mint from storage:',
-      error
-    );
-    return null;
-  }
-}
-
-function clearPendingVanityMintStorage() {
   localStorage.removeItem(
     PENDING_VANITY_MINT_STORAGE_KEY
   );
-}
 
-function getStoredPendingVanityNetwork(
-  stored: StoredPendingVanityMint
-): SolanaNetwork {
-  return (
-    stored.network ??
-    'devnet'
-  );
+  return hadLegacy;
 }
 
 function validatePendingVanityNetwork(
-  stored: StoredPendingVanityMint
+  pending: PendingVanityTokenCreate
 ): boolean {
-  const storedNetwork =
-    getStoredPendingVanityNetwork(
-      stored
-    );
+  const pendingNetwork =
+    pending.network;
   const selectedNetwork =
     getSelectedNetwork();
 
   if (
-    storedNetwork !==
+    pendingNetwork !==
     selectedNetwork
   ) {
     showUserError(
-      `Pending vanity mint is stored for ${storedNetwork}. Switch to ${storedNetwork} or delete the pending mint.`
+      `Pending vanity mint is for ${pendingNetwork}. Switch to ${pendingNetwork} or delete the pending mint.`
     );
     return false;
   }
 
   return true;
-}
-
-function buildPendingVanityTokenCreateFromStorage(
-  stored: StoredPendingVanityMint,
-  writeWallet: WalletProvider,
-  writeWalletAddress: string
-): PendingVanityTokenCreate {
-  return {
-    network:
-      getStoredPendingVanityNetwork(
-        stored
-      ),
-    writeWallet,
-    writeWalletAddress,
-    metadataInput: {
-      tokenName:
-        stored.tokenName,
-      symbol:
-        stored.symbol,
-      tokenDescription:
-        stored.tokenDescription ??
-        '',
-      tokenTags:
-        stored.tokenTags ??
-        [],
-      tokenWebsite:
-        stored.tokenWebsite ??
-        '',
-      tokenTelegram:
-        stored.tokenTelegram ??
-        '',
-      tokenDiscord:
-        stored.tokenDiscord ??
-        '',
-      tokenTwitter:
-        stored.tokenTwitter ??
-        '',
-      tokenFacebook:
-        stored.tokenFacebook ??
-        '',
-    },
-    uploadedMetadata:
-      stored.metadataUrl
-        ? {
-            metadataUrl:
-              stored.metadataUrl,
-          }
-        : undefined,
-    decimals:
-      stored.decimals,
-    supply:
-      stored.supply,
-    revokeMintAfterCreate:
-      stored.revokeMintAfterCreate,
-    revokeFreezeAfterCreate:
-      stored.revokeFreezeAfterCreate,
-    vanity: {
-      address:
-        stored.address,
-      secretKey:
-        stored.secretKey,
-      attempts:
-        stored.attempts,
-    },
-    tokenName:
-      stored.tokenName,
-    symbol:
-      stored.symbol,
-    vanityFields:
-      stored.vanityFields,
-  };
 }
 
 function renderPendingVanityMintUI() {
@@ -1875,10 +1668,10 @@ function renderPendingVanityMintUI() {
     return;
   }
 
-  const stored =
-    loadPendingVanityMintFromStorage();
+  const pending =
+    pendingVanityTokenCreate;
 
-  if (!stored) {
+  if (!pending) {
     box.style.display =
       'none';
     addressEl.textContent =
@@ -1896,24 +1689,22 @@ function renderPendingVanityMintUI() {
     return;
   }
 
-  const storedNetwork =
-    getStoredPendingVanityNetwork(
-      stored
-    );
+  const pendingNetwork =
+    pending.network;
   const selectedNetwork =
     getSelectedNetwork();
   const networkMismatch =
-    storedNetwork !==
+    pendingNetwork !==
     selectedNetwork;
 
   box.style.display =
     'block';
   addressEl.textContent =
-    stored.address;
+    pending.vanity.address;
 
   if (networkEl) {
     networkEl.textContent =
-      storedNetwork;
+      pendingNetwork;
   }
 
   if (mismatchEl) {
@@ -1921,7 +1712,7 @@ function renderPendingVanityMintUI() {
       mismatchEl.style.display =
         'block';
       mismatchEl.textContent =
-        `Network mismatch: pending mint is stored for ${storedNetwork}, but ${selectedNetwork} is selected. Switch network or delete the pending mint.`;
+        `Network mismatch: pending mint is for ${pendingNetwork}, but ${selectedNetwork} is selected. Switch network or delete the pending mint.`;
     } else {
       mismatchEl.style.display =
         'none';
@@ -1934,13 +1725,14 @@ function renderPendingVanityMintUI() {
 function clearAllPendingVanityState() {
   pendingVanityTokenCreate =
     null;
-  clearPendingVanityMintStorage();
+  purgeLegacyPendingVanityMintStorage();
   renderPendingVanityMintUI();
 }
 
 function clearPendingVanityTokenCreate() {
   pendingVanityTokenCreate =
     null;
+  purgeLegacyPendingVanityMintStorage();
 }
 
 async function uploadCreateTokenMetadata(
@@ -2104,9 +1896,6 @@ async function ensurePendingVanityMetadataUploaded(
 
   pending.uploadedMetadata =
     uploadedMetadata;
-  savePendingVanityMintToStorage(
-    pending
-  );
 
   return uploadedMetadata;
 }
@@ -2169,11 +1958,13 @@ async function executePendingVanityMintFlow(
 }
 
 async function continueStoredPendingVanityMint() {
-  const stored =
-    loadPendingVanityMintFromStorage();
+  const pending =
+    pendingVanityTokenCreate;
 
-  if (!stored) {
+  if (!pending) {
     renderPendingVanityMintUI();
+    progressStatus.innerHTML =
+      VANITY_SESSION_EXPIRED_MESSAGE;
     return;
   }
 
@@ -2185,7 +1976,7 @@ async function continueStoredPendingVanityMint() {
 
   if (
     !validatePendingVanityNetwork(
-      stored
+      pending
     )
   ) {
     return;
@@ -2223,12 +2014,10 @@ async function continueStoredPendingVanityMint() {
       return;
     }
 
-    const pending =
-      buildPendingVanityTokenCreateFromStorage(
-        stored,
-        walletSession.provider,
-        walletSession.address
-      );
+    pending.writeWallet =
+      walletSession.provider;
+    pending.writeWalletAddress =
+      walletSession.address;
 
     await executePendingVanityMintFlow(
       pending
@@ -3294,55 +3083,59 @@ actionPopupTryAgainButton.addEventListener(
     if (
       !pending
     ) {
-      const stored =
-        loadPendingVanityMintFromStorage();
-
-      if (
-        !stored
-      ) {
-        endAction();
-        return;
-      }
-
-      if (
-        !validatePendingVanityNetwork(
-          stored
-        )
-      ) {
-        endAction();
-        return;
-      }
-
-      const walletSession =
-        await resolveConnectedWallet(
-          'create-token-retry'
-        );
-
-      if (
-        !walletSession
-      ) {
-        showActionPopup(
-          'Wallet required',
-          'Connect your wallet before retrying.',
-          {
-            showStopButton: false,
-            state: 'error',
-          }
-        );
-        hideActionPopup(
-          POPUP_READ_MS
-        );
-        endAction();
-        return;
-      }
-
-      pending =
-        buildPendingVanityTokenCreateFromStorage(
-          stored,
-          walletSession.provider,
-          walletSession.address
-        );
+      progressStatus.innerHTML =
+        VANITY_SESSION_EXPIRED_MESSAGE;
+      showActionPopup(
+        'Session expired',
+        VANITY_SESSION_EXPIRED_MESSAGE,
+        {
+          showStopButton: false,
+          state: 'error',
+        }
+      );
+      hideActionPopup(
+        POPUP_READ_MS
+      );
+      endAction();
+      return;
     }
+
+    if (
+      !validatePendingVanityNetwork(
+        pending
+      )
+    ) {
+      endAction();
+      return;
+    }
+
+    const walletSession =
+      await resolveConnectedWallet(
+        'create-token-retry'
+      );
+
+    if (
+      !walletSession
+    ) {
+      showActionPopup(
+        'Wallet required',
+        'Connect your wallet before retrying.',
+        {
+          showStopButton: false,
+          state: 'error',
+        }
+      );
+      hideActionPopup(
+        POPUP_READ_MS
+      );
+      endAction();
+      return;
+    }
+
+    pending.writeWallet =
+      walletSession.provider;
+    pending.writeWalletAddress =
+      walletSession.address;
 
     showActionPopupActions(
       false
@@ -3400,9 +3193,8 @@ actionPopupCancelButton.addEventListener(
       progressStatus.innerHTML =
         'Vanity mint cancelled.';
     } else {
-      clearPendingVanityTokenCreate();
       progressStatus.innerHTML =
-        'Token creation cancelled. Pending vanity mint is still saved on this device.';
+        'Token creation cancelled. You can continue the pending vanity mint when ready.';
       renderPendingVanityMintUI();
     }
 
@@ -3457,6 +3249,13 @@ deletePendingVanityMintButton.addEventListener(
       'Pending vanity mint deleted.';
   }
 );
+
+if (
+  purgeLegacyPendingVanityMintStorage()
+) {
+  progressStatus.innerHTML =
+    VANITY_SESSION_EXPIRED_MESSAGE;
+}
 
 renderPendingVanityMintUI();
 
@@ -5370,9 +5169,6 @@ tokenForm.addEventListener('submit', async (event) => {
           .vanity.address
       );
 
-      savePendingVanityMintToStorage(
-        pendingVanityTokenCreate
-      );
       renderPendingVanityMintUI();
 
       showVanityFoundContinuePopup(
@@ -5495,10 +5291,7 @@ tokenForm.addEventListener('submit', async (event) => {
   }
 
   if (
-    (
-      pendingVanityTokenCreate ||
-      loadPendingVanityMintFromStorage()
-    ) &&
+    pendingVanityTokenCreate &&
     isWalletConfirmationFailure(
       error
     )
