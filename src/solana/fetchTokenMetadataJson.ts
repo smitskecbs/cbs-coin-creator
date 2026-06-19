@@ -15,6 +15,42 @@ import {
   type SolanaNetwork,
 } from './config';
 
+export async function fetchOnChainTokenMetadata(
+  mintAddress: string,
+  network: SolanaNetwork
+) {
+  const umi =
+    createUmi(
+      getRpc(network)
+    );
+
+  const mint =
+    publicKey(
+      mintAddress
+    );
+
+  const metadata =
+    await fetchMetadataFromSeeds(
+      umi,
+      {
+        mint,
+      }
+    );
+
+  return {
+    isMutable:
+      metadata.isMutable,
+
+    updateAuthority:
+      metadata.updateAuthority
+        ? metadata.updateAuthority.toString()
+        : null,
+
+    onChainUri:
+      metadata.uri,
+  };
+}
+
 export async function fetchTokenMetadataJson(
   mintAddress: string,
   network: SolanaNetwork

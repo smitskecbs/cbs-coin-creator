@@ -30,6 +30,7 @@ import {
 import {
   ENABLE_MAINNET,
   getExplorerTokenUrl,
+  getExplorerTxUrl,
   getRpc,
   isMainnetRpcConfigured,
   MAINNET_RPC_NOT_CONFIGURED_MESSAGE,
@@ -43,6 +44,11 @@ import {
 import {
   revokeAuthorities,
 } from './solana/revokeAuthorities';
+
+import {
+  transferTokenAuthorities,
+  type AuthorityTransferStepResult,
+} from './solana/transferAuthorities';
 
 import {
   mintSupply,
@@ -63,6 +69,7 @@ import {
 
 import {
   fetchTokenMetadataJson,
+  fetchOnChainTokenMetadata,
 } from './solana/fetchTokenMetadataJson';
 
 import {
@@ -722,6 +729,87 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               Token tool status will appear here
             </div>
 
+            <div class="transfer-authorities-section">
+              <h3 class="transfer-authorities-title">
+                Transfer Authorities
+              </h3>
+              <p class="helper-text">
+                Move mint, freeze, or metadata update authority to another wallet.
+              </p>
+              <p
+                id="transferAuthorityHint"
+                class="helper-text transfer-authority-hint"
+              ></p>
+
+              <label>
+                New authority wallet address
+                <input
+                  id="transferNewAuthorityAddress"
+                  type="text"
+                  class="wallet-input"
+                  placeholder="Paste new authority wallet address"
+                />
+              </label>
+
+              <label class="checkbox-row transfer-authority-row">
+                <input
+                  id="transferMintAuthorityCheckbox"
+                  type="checkbox"
+                />
+                <span>
+                  Transfer mint authority
+                  <span
+                    id="transferMintAuthorityNote"
+                    class="transfer-authority-note"
+                  ></span>
+                </span>
+              </label>
+
+              <label class="checkbox-row transfer-authority-row">
+                <input
+                  id="transferFreezeAuthorityCheckbox"
+                  type="checkbox"
+                />
+                <span>
+                  Transfer freeze authority
+                  <span
+                    id="transferFreezeAuthorityNote"
+                    class="transfer-authority-note"
+                  ></span>
+                </span>
+              </label>
+
+              <label class="checkbox-row transfer-authority-row">
+                <input
+                  id="transferMetadataAuthorityCheckbox"
+                  type="checkbox"
+                />
+                <span>
+                  Transfer metadata update authority
+                  <span
+                    id="transferMetadataAuthorityNote"
+                    class="transfer-authority-note"
+                  ></span>
+                </span>
+              </label>
+
+              <button
+                id="transferAuthoritiesButton"
+                type="button"
+                class="primary-btn"
+                disabled
+              >
+                Transfer Authorities
+              </button>
+
+              <div
+                id="transferAuthorityStatus"
+                class="wallet-box"
+              >
+                Authority transfer status will appear here
+              </div>
+            </div>
+
             <div class="warning-box">
               <strong>Permanent action.</strong>
               After locking metadata, logo, description and socials can no longer be changed.
@@ -1129,6 +1217,48 @@ document.body.insertAdjacentHTML(
           </button>
           <button
             id="walletNetworkCancelButton"
+            type="button"
+            class="secondary-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="transferAuthorityModal"
+      class="low-sol-modal-overlay transfer-authority-modal"
+      style="display: none;"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transferAuthorityModalTitle"
+    >
+      <div class="low-sol-modal-card">
+        <span
+          class="action-popup-icon action-popup-icon--error"
+          aria-hidden="true"
+        >!</span>
+
+        <h3 id="transferAuthorityModalTitle">
+          Transfer Token Authorities
+        </h3>
+
+        <div
+          id="transferAuthorityModalBody"
+          class="low-sol-modal-body"
+        ></div>
+
+        <div class="action-popup-actions low-sol-modal-actions">
+          <button
+            id="transferAuthorityConfirmButton"
+            type="button"
+            class="primary-btn"
+          >
+            Transfer Authorities
+          </button>
+          <button
+            id="transferAuthorityCancelButton"
             type="button"
             class="secondary-btn"
           >
@@ -1652,6 +1782,32 @@ const walletNetworkCancelButton =
   document.getElementById(
     'walletNetworkCancelButton'
   ) as HTMLButtonElement;
+
+const transferAuthorityModal =
+  document.getElementById(
+    'transferAuthorityModal'
+  ) as HTMLDivElement;
+
+const transferAuthorityModalBody =
+  document.getElementById(
+    'transferAuthorityModalBody'
+  ) as HTMLDivElement;
+
+const transferAuthorityConfirmButton =
+  document.getElementById(
+    'transferAuthorityConfirmButton'
+  ) as HTMLButtonElement;
+
+const transferAuthorityCancelButton =
+  document.getElementById(
+    'transferAuthorityCancelButton'
+  ) as HTMLButtonElement;
+
+let transferAuthorityModalResolver:
+  | ((
+      proceed: boolean
+    ) => void)
+  | null = null;
 
 setWalletNetworkResolver(
   getSelectedNetwork
@@ -3536,6 +3692,117 @@ walletNetworkCancelButton.addEventListener(
   }
 );
 
+function hideTransferAuthorityModal() {
+  transferAuthorityModal.style.display =
+    'none';
+  document.body.classList.remove(
+    'low-sol-modal-open'
+  );
+}
+
+function resolveTransferAuthorityModal(
+  proceed: boolean
+) {
+  hideTransferAuthorityModal();
+
+  const resolver =
+    transferAuthorityModalResolver;
+
+  transferAuthorityModalResolver =
+    null;
+  resolver?.(proceed);
+}
+
+function buildTransferAuthorityModalMessage(
+  newAuthority: string,
+  selectedAuthorities: string[]
+): string {
+  const authorityList =
+    selectedAuthorities
+      .map(
+        (label) =>
+          `- ${label}`
+      )
+      .join('<br>');
+
+  return `
+    <p>
+      You are about to move selected token authorities to a new wallet.
+    </p>
+    <p>
+      This does not transfer token supply.
+    </p>
+    <p>
+      This does not transfer ownership of tokens.
+    </p>
+    <p>
+      It only changes who can mint, freeze, or update metadata in the future.
+    </p>
+    <p>
+      <strong>New authority:</strong><br>
+      ${newAuthority}
+    </p>
+    <p>
+      <strong>Selected authorities:</strong><br>
+      ${authorityList}
+    </p>
+    <p>
+      <strong>Warning:</strong>
+      If you transfer authority to the wrong wallet, CBS Tools cannot recover it for you.
+    </p>
+  `;
+}
+
+function showTransferAuthorityModal(
+  newAuthority: string,
+  selectedAuthorities: string[]
+): Promise<boolean> {
+  if (
+    transferAuthorityModalResolver
+  ) {
+    resolveTransferAuthorityModal(
+      false
+    );
+  }
+
+  transferAuthorityModalBody.innerHTML =
+    buildTransferAuthorityModalMessage(
+      newAuthority,
+      selectedAuthorities
+    );
+
+  document.body.classList.add(
+    'low-sol-modal-open'
+  );
+  transferAuthorityModal.style.display =
+    'flex';
+
+  return new Promise(
+    (resolve) => {
+      transferAuthorityModalResolver =
+        resolve;
+    }
+  );
+}
+
+transferAuthorityConfirmButton.addEventListener(
+  'click',
+  () => {
+    resolveTransferAuthorityModal(
+      true
+    );
+  }
+);
+
+transferAuthorityCancelButton.addEventListener(
+  'click',
+  () => {
+    resolveTransferAuthorityModal(
+      false
+    );
+  }
+);
+
 const continuePendingVanityMintButton =
   document.getElementById(
     'continuePendingVanityMint'
@@ -3914,8 +4181,76 @@ const updateMintAddressInput =
     'updateMintAddress'
   ) as HTMLInputElement;
 
+const transferAuthorityHint =
+  document.getElementById(
+    'transferAuthorityHint'
+  ) as HTMLParagraphElement;
+
+const transferNewAuthorityInput =
+  document.getElementById(
+    'transferNewAuthorityAddress'
+  ) as HTMLInputElement;
+
+const transferMintAuthorityCheckbox =
+  document.getElementById(
+    'transferMintAuthorityCheckbox'
+  ) as HTMLInputElement;
+
+const transferFreezeAuthorityCheckbox =
+  document.getElementById(
+    'transferFreezeAuthorityCheckbox'
+  ) as HTMLInputElement;
+
+const transferMetadataAuthorityCheckbox =
+  document.getElementById(
+    'transferMetadataAuthorityCheckbox'
+  ) as HTMLInputElement;
+
+const transferMintAuthorityNote =
+  document.getElementById(
+    'transferMintAuthorityNote'
+  ) as HTMLSpanElement;
+
+const transferFreezeAuthorityNote =
+  document.getElementById(
+    'transferFreezeAuthorityNote'
+  ) as HTMLSpanElement;
+
+const transferMetadataAuthorityNote =
+  document.getElementById(
+    'transferMetadataAuthorityNote'
+  ) as HTMLSpanElement;
+
+const transferAuthoritiesButton =
+  document.getElementById(
+    'transferAuthoritiesButton'
+  ) as HTMLButtonElement;
+
+const transferAuthorityStatus =
+  document.getElementById(
+    'transferAuthorityStatus'
+  ) as HTMLDivElement;
+
 let activeMintAddress = '';
 let pendingAction: string | null = null;
+let activeMintAuthority:
+  | string
+  | null = null;
+let activeFreezeAuthority:
+  | string
+  | null = null;
+let activeMetadataUpdateAuthority:
+  | string
+  | null = null;
+
+const AUTHORITY_TRANSFER_LABELS =
+  {
+    mint: 'Mint authority',
+    freeze:
+      'Freeze authority',
+    metadata:
+      'Metadata update authority',
+  } as const;
 
 type MetadataMutabilityState =
   | 'idle'
@@ -3928,6 +4263,38 @@ let metadataMutabilityState:
   MetadataMutabilityState =
   'idle';
 
+function renderMetadataAuthorityNote(): string {
+  return `
+    <br><br>
+    <span class="helper-text metadata-authority-note">
+      Creator may remain unchanged. Creator is different from update authority.
+    </span>
+  `;
+}
+
+function renderMetadataUpdateAuthorityLine(): string {
+  if (
+    metadataMutabilityState ===
+      'loading' ||
+    metadataMutabilityState ===
+      'idle' ||
+    metadataMutabilityState ===
+      'error'
+  ) {
+    return '';
+  }
+
+  return `
+    <br><br>
+    <strong>Metadata update authority:</strong><br>
+    ${
+      activeMetadataUpdateAuthority ??
+      'Revoked'
+    }
+    ${renderMetadataAuthorityNote()}
+  `;
+}
+
 function renderMetadataStatusMarkup(): string {
   switch (
     metadataMutabilityState
@@ -3935,12 +4302,13 @@ function renderMetadataStatusMarkup(): string {
     case 'loading':
       return 'Checking metadata status...';
     case 'editable':
-      return '<strong>Metadata status:</strong> Editable';
+      return `<strong>Metadata status:</strong> Editable${renderMetadataUpdateAuthorityLine()}`;
     case 'locked':
       return `
         <strong>Metadata status:</strong> Locked permanently
         <br><br>
         Logo, description, socials and tags can no longer be changed.
+        ${renderMetadataUpdateAuthorityLine()}
       `;
     case 'error':
       return 'Could not load metadata status. Check the mint address.';
@@ -3997,6 +4365,219 @@ function isValidMintAddress(
   }
 }
 
+function isValidSolanaPublicKey(
+  address: string
+): boolean {
+  return isValidMintAddress(
+    address
+  );
+}
+
+function formatAuthorityTransferResultsHtml(
+  results: AuthorityTransferStepResult[],
+  network: SolanaNetwork,
+  newAuthority: string
+): string {
+  const succeeded =
+    results.filter(
+      (result) =>
+        result.success
+    );
+  const failed =
+    results.find(
+      (result) =>
+        !result.success
+    );
+
+  const lines: string[] =
+    [];
+
+  if (
+    succeeded.length >
+    0
+  ) {
+    lines.push(
+      '<strong>Authority transfer completed</strong>'
+    );
+    lines.push(
+      `<br><strong>New authority:</strong><br>${newAuthority}`
+    );
+    lines.push(
+      '<br><strong>Transferred authorities:</strong>'
+    );
+
+    for (const result of succeeded) {
+      lines.push(
+        `- ${AUTHORITY_TRANSFER_LABELS[result.type]}`
+      );
+    }
+
+    lines.push(
+      '<br><strong>Transactions:</strong>'
+    );
+
+    for (const result of succeeded) {
+      if (
+        !result.signature
+      ) {
+        continue;
+      }
+
+      const explorerUrl =
+        getExplorerTxUrl(
+          network,
+          result.signature
+        );
+
+      lines.push(
+        `- ${AUTHORITY_TRANSFER_LABELS[result.type]}: <a href="${explorerUrl}" target="_blank" rel="noopener noreferrer">${result.signature}</a>`
+      );
+    }
+  }
+
+  if (failed) {
+    lines.push(
+      '<br><br><strong>Transfer stopped:</strong>'
+    );
+    lines.push(
+      `${AUTHORITY_TRANSFER_LABELS[failed.type]} failed: ${failed.error ?? 'Unknown error'}`
+    );
+  }
+
+  return lines.join(
+    '<br>'
+  );
+}
+
+function formatCurrentMetadataUpdateAuthorityHtml(): string {
+  return `
+    <br><br>
+    <strong>Current metadata update authority:</strong><br>
+    ${
+      activeMetadataUpdateAuthority ??
+      'Revoked'
+    }
+    ${renderMetadataAuthorityNote()}
+  `;
+}
+
+function updateTransferAuthorityControls() {
+  const connected =
+    connectedWalletAddress.trim();
+  const busy =
+    pendingAction !==
+    null;
+  const mintValid =
+    isValidMintAddress(
+      activeMintAddress
+    );
+
+  const mintRevoked =
+    !activeMintAuthority;
+  const freezeRevoked =
+    !activeFreezeAuthority;
+  const metadataRevoked =
+    metadataMutabilityState !==
+      'editable' ||
+    !activeMetadataUpdateAuthority;
+
+  const canTransferMint =
+    !mintRevoked &&
+    Boolean(
+      connected
+    ) &&
+    activeMintAuthority ===
+      connected;
+  const canTransferFreeze =
+    !freezeRevoked &&
+    Boolean(
+      connected
+    ) &&
+    activeFreezeAuthority ===
+      connected;
+  const canTransferMetadata =
+    !metadataRevoked &&
+    Boolean(
+      connected
+    ) &&
+    activeMetadataUpdateAuthority ===
+      connected;
+
+  transferMintAuthorityNote.textContent =
+    mintRevoked
+      ? ' (Already revoked)'
+      : '';
+  transferFreezeAuthorityNote.textContent =
+    freezeRevoked
+      ? ' (Already revoked)'
+      : '';
+  transferMetadataAuthorityNote.textContent =
+    metadataRevoked
+      ? ' (Already revoked)'
+      : '';
+
+  transferMintAuthorityCheckbox.disabled =
+    !canTransferMint ||
+    busy;
+  transferFreezeAuthorityCheckbox.disabled =
+    !canTransferFreeze ||
+    busy;
+  transferMetadataAuthorityCheckbox.disabled =
+    !canTransferMetadata ||
+    busy;
+
+  if (
+    !canTransferMint
+  ) {
+    transferMintAuthorityCheckbox.checked =
+      false;
+  }
+
+  if (
+    !canTransferFreeze
+  ) {
+    transferFreezeAuthorityCheckbox.checked =
+      false;
+  }
+
+  if (
+    !canTransferMetadata
+  ) {
+    transferMetadataAuthorityCheckbox.checked =
+      false;
+  }
+
+  const canTransferAny =
+    canTransferMint ||
+    canTransferFreeze ||
+    canTransferMetadata;
+
+  if (
+    !connected
+  ) {
+    transferAuthorityHint.textContent =
+      'Connect your wallet to transfer authorities.';
+  } else if (
+    !mintValid
+  ) {
+    transferAuthorityHint.textContent =
+      'Enter a valid mint address above.';
+  } else if (
+    !canTransferAny
+  ) {
+    transferAuthorityHint.textContent =
+      'Connect the current authority wallet to transfer authorities.';
+  } else {
+    transferAuthorityHint.textContent =
+      '';
+  }
+
+  transferAuthoritiesButton.disabled =
+    !mintValid ||
+    !canTransferAny ||
+    busy;
+}
+
 function logActionState(
   action: string
 ) {
@@ -4029,6 +4610,7 @@ function clearStaleWalletConnection() {
     'Connect Wallet';
   walletBox.innerHTML =
     'No wallet connected';
+  updateTransferAuthorityControls();
 }
 
 function logSelectedWalletDebug(
@@ -4647,6 +5229,8 @@ async function resolveConnectedWallet(
     connectedWalletAddress
   );
 
+  updateTransferAuthorityControls();
+
   return {
     provider,
     address,
@@ -4749,6 +5333,11 @@ async function refreshActiveTokenInfo(
       selectedNetwork
     );
 
+    activeMintAuthority =
+      tokenInfo.mintAuthority;
+    activeFreezeAuthority =
+      tokenInfo.freezeAuthority;
+
     console.log(
       '[state] mint authority:',
       tokenInfo.mintAuthority
@@ -4761,33 +5350,38 @@ async function refreshActiveTokenInfo(
     );
 
     try {
-      const metadata =
-        await fetchTokenMetadataJson(
+      const onChainMetadata =
+        await fetchOnChainTokenMetadata(
           mint,
           selectedNetwork
         );
 
       metadataMutabilityState =
-        metadata.isMutable
+        onChainMetadata.isMutable
           ? 'editable'
           : 'locked';
 
+      activeMetadataUpdateAuthority =
+        onChainMetadata.updateAuthority;
+
       console.log(
         '[state] update authority:',
-        metadata.updateAuthority
-          ?? 'Unknown'
+        onChainMetadata.updateAuthority
+          ?? 'Revoked'
       );
       console.log(
         '[state] metadata uri:',
-        metadata.onChainUri
+        onChainMetadata.onChainUri
       );
       console.log(
         '[state] metadata mutable:',
-        metadata.isMutable
+        onChainMetadata.isMutable
       );
     } catch (metadataError) {
       metadataMutabilityState =
         'error';
+      activeMetadataUpdateAuthority =
+        null;
       console.warn(
         '[state] metadata refresh skipped:',
         metadataError
@@ -4798,9 +5392,16 @@ async function refreshActiveTokenInfo(
       'Token not found. Check the mint address.';
     metadataMutabilityState =
       'error';
+    activeMintAuthority =
+      null;
+    activeFreezeAuthority =
+      null;
+    activeMetadataUpdateAuthority =
+      null;
   }
 
   updateMetadataStatusDisplays();
+  updateTransferAuthorityControls();
   updateActionButtonStates();
 }
 
@@ -4930,6 +5531,8 @@ function updateActionButtonStates() {
     busy ||
     !lockConfirmed ||
     metadataLocked;
+
+  updateTransferAuthorityControls();
 }
 
 function bindMintAddressInputs() {
@@ -4953,6 +5556,13 @@ function bindMintAddressInputs() {
         tokenInfoBox.innerHTML =
           'Token info will appear here';
         resetMetadataMutabilityState();
+        activeMintAuthority =
+          null;
+        activeFreezeAuthority =
+          null;
+        activeMetadataUpdateAuthority =
+          null;
+        updateTransferAuthorityControls();
         updateActionButtonStates();
         return;
       }
@@ -5943,6 +6553,401 @@ manageTokenButton.addEventListener(
         }
       );
       hideActionPopup(POPUP_READ_MS);
+    } finally {
+      endAction();
+    }
+  }
+);
+
+transferAuthoritiesButton.addEventListener(
+  'click',
+  async () => {
+    if (
+      !beginAction(
+        'transfer-authorities'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      if (
+        !ensureWriteNetworkAllowed()
+      ) {
+        endAction();
+        return;
+      }
+
+      const selectedNetwork =
+        getSelectedNetwork();
+
+      const walletSession =
+        await resolveConnectedWallet(
+          'transfer-authorities'
+        );
+
+      if (
+        !walletSession
+      ) {
+        showActionPopup(
+          'Wallet required',
+          'Connect your wallet before transferring authorities.',
+          {
+            showStopButton: false,
+            state: 'error',
+          }
+        );
+        hideActionPopup(
+          POPUP_READ_MS
+        );
+        return;
+      }
+
+      const mintAddress =
+        getMintForAction(
+          'manage'
+        );
+
+      if (
+        !mintAddress
+      ) {
+        hideActionPopup();
+        return;
+      }
+
+      const newAuthority =
+        transferNewAuthorityInput.value.trim();
+
+      if (
+        !isValidSolanaPublicKey(
+          newAuthority
+        )
+      ) {
+        showUserError(
+          'Enter a valid Solana public key for the new authority wallet.'
+        );
+        return;
+      }
+
+      const transferMint =
+        transferMintAuthorityCheckbox.checked;
+      const transferFreeze =
+        transferFreezeAuthorityCheckbox.checked;
+      const transferMetadata =
+        transferMetadataAuthorityCheckbox.checked;
+
+      if (
+        !transferMint &&
+        !transferFreeze &&
+        !transferMetadata
+      ) {
+        showUserError(
+          'Select at least one authority to transfer.'
+        );
+        return;
+      }
+
+      const tokenInfo =
+        await getTokenInfo(
+          mintAddress,
+          selectedNetwork
+        );
+
+      activeMintAuthority =
+        tokenInfo.mintAuthority;
+      activeFreezeAuthority =
+        tokenInfo.freezeAuthority;
+
+      let metadataUpdateAuthority:
+        | string
+        | null = null;
+
+      try {
+        const metadata =
+          await fetchTokenMetadataJson(
+            mintAddress,
+            selectedNetwork
+          );
+
+        metadataUpdateAuthority =
+          metadata.updateAuthority;
+        activeMetadataUpdateAuthority =
+          metadata.updateAuthority;
+        metadataMutabilityState =
+          metadata.isMutable
+            ? 'editable'
+            : 'locked';
+      } catch {
+        metadataUpdateAuthority =
+          null;
+        activeMetadataUpdateAuthority =
+          null;
+      }
+
+      updateTransferAuthorityControls();
+
+      const connectedWallet =
+        walletSession.address;
+
+      if (
+        transferMint &&
+        tokenInfo.mintAuthority !==
+          connectedWallet
+      ) {
+        showUserError(
+          'Connect the current mint authority wallet to transfer mint authority.'
+        );
+        return;
+      }
+
+      if (
+        transferFreeze &&
+        tokenInfo.freezeAuthority !==
+          connectedWallet
+      ) {
+        showUserError(
+          'Connect the current freeze authority wallet to transfer freeze authority.'
+        );
+        return;
+      }
+
+      if (
+        transferMetadata &&
+        (
+          !metadataUpdateAuthority ||
+          metadataUpdateAuthority !==
+            connectedWallet
+        )
+      ) {
+        showUserError(
+          'Connect the current metadata update authority wallet to transfer metadata update authority.'
+        );
+        return;
+      }
+
+      if (
+        newAuthority ===
+        connectedWallet
+      ) {
+        const sameWalletConfirmed =
+          confirm(
+            'The new authority address is the same as your connected wallet. Continue with the transfer?'
+          );
+
+        if (
+          !sameWalletConfirmed
+        ) {
+          return;
+        }
+      }
+
+      const selectedAuthorityLabels: string[] =
+        [];
+
+      if (transferMint) {
+        selectedAuthorityLabels.push(
+          AUTHORITY_TRANSFER_LABELS.mint
+        );
+      }
+
+      if (transferFreeze) {
+        selectedAuthorityLabels.push(
+          AUTHORITY_TRANSFER_LABELS.freeze
+        );
+      }
+
+      if (transferMetadata) {
+        selectedAuthorityLabels.push(
+          AUTHORITY_TRANSFER_LABELS.metadata
+        );
+      }
+
+      const confirmed =
+        await showTransferAuthorityModal(
+          newAuthority,
+          selectedAuthorityLabels
+        );
+
+      if (
+        !confirmed
+      ) {
+        return;
+      }
+
+      if (
+        !(await ensureWalletNetworkConfirmedForSigning(
+          walletSession.provider,
+          walletSession.address,
+          selectedNetwork
+        ))
+      ) {
+        return;
+      }
+
+      transferAuthorityStatus.innerHTML =
+        'Transferring authorities...';
+
+      showWalletConfirmPopup(
+        'Transferring authorities...'
+      );
+
+      const results =
+        await transferTokenAuthorities(
+          {
+            network:
+              selectedNetwork,
+            walletProvider:
+              walletSession.provider,
+            walletAddress:
+              walletSession.address,
+            mintAddress,
+            newAuthorityAddress:
+              newAuthority,
+            transferMintAuthority:
+              transferMint,
+            transferFreezeAuthority:
+              transferFreeze,
+            transferMetadataUpdateAuthority:
+              transferMetadata,
+          }
+        );
+
+      transferAuthorityStatus.innerHTML =
+        formatAuthorityTransferResultsHtml(
+          results,
+          selectedNetwork,
+          newAuthority
+        );
+
+      const allSucceeded =
+        results.length >
+          0 &&
+        results.every(
+          (result) =>
+            result.success
+        );
+      const partialSuccess =
+        results.some(
+          (result) =>
+            result.success
+        ) &&
+        results.some(
+          (result) =>
+            !result.success
+        );
+
+      if (
+        allSucceeded
+      ) {
+        await setActiveMint(
+          mintAddress,
+          {
+            reloadInfo:
+              true,
+          }
+        );
+
+        if (
+          results.some(
+            (
+              result
+            ) =>
+              result.type ===
+                'metadata' &&
+              result.success
+          )
+        ) {
+          transferAuthorityStatus.innerHTML +=
+            formatCurrentMetadataUpdateAuthorityHtml();
+        }
+
+        showActionPopup(
+          'Authority transfer completed',
+          `Selected authorities were transferred to ${newAuthority}.`,
+          {
+            showStopButton:
+              false,
+            state:
+              'success',
+          }
+        );
+        hideActionPopup(
+          POPUP_READ_MS
+        );
+      } else if (
+        partialSuccess
+      ) {
+        await setActiveMint(
+          mintAddress,
+          {
+            reloadInfo:
+              true,
+          }
+        );
+
+        if (
+          results.some(
+            (
+              result
+            ) =>
+              result.type ===
+                'metadata' &&
+              result.success
+          )
+        ) {
+          transferAuthorityStatus.innerHTML +=
+            formatCurrentMetadataUpdateAuthorityHtml();
+        }
+
+        showActionPopup(
+          'Partial transfer',
+          'Some authority transfers completed before the process stopped. Review the status below.',
+          {
+            showStopButton:
+              false,
+            state:
+              'error',
+          }
+        );
+        hideActionPopup(
+          POPUP_READ_MS
+        );
+      } else {
+        showActionPopup(
+          'Transfer failed',
+          results[0]
+            ?.error ??
+            'Authority transfer failed. Check your wallet and try again.',
+          {
+            showStopButton:
+              false,
+            state:
+              'error',
+          }
+        );
+        hideActionPopup(
+          POPUP_READ_MS
+        );
+      }
+    } catch (error) {
+      console.error(error);
+
+      transferAuthorityStatus.innerHTML =
+        'Authority transfer failed.';
+
+      showActionPopup(
+        'Transfer failed',
+        'Authority transfer failed. Check your wallet and mint address.',
+        {
+          showStopButton:
+            false,
+          state:
+            'error',
+        }
+      );
+      hideActionPopup(
+        POPUP_READ_MS
+      );
     } finally {
       endAction();
     }

@@ -665,6 +665,37 @@ details.accordion > summary::-webkit-details-marker {
   background: rgba(180, 40, 40, 0.08);
 }
 
+.transfer-authorities-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.transfer-authorities-title {
+  margin: 0 0 8px;
+  font-size: clamp(18px, 4vw, 20px);
+  line-height: 1.25;
+}
+
+.transfer-authority-hint {
+  margin-bottom: 12px;
+}
+
+.transfer-authority-row span {
+  line-height: 1.45;
+}
+
+.transfer-authority-note {
+  display: inline;
+  font-size: 12px;
+  color: #777777;
+}
+
+.metadata-authority-note {
+  display: block;
+  margin-top: 0;
+}
+
 .vanity-authenticity-warning {
   margin: 10px 0 0;
   font-size: 12px;
