@@ -1207,6 +1207,25 @@ body.low-sol-modal-open {
   margin-top: 0;
 }
 
+.wallet-network-dismiss-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: #555555;
+  font-size: 14px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.wallet-network-dismiss-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex: none;
+  cursor: pointer;
+}
+
 #lowSolBalanceModal .secondary-btn {
   border: 1px solid rgba(216, 111, 0, 0.35);
   background: #ffffff;

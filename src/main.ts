@@ -16,6 +16,7 @@ import {
   setWalletNetworkResolver,
   subscribeToWalletChanges,
   walletSupportsTokenCreation,
+  getWalletNetworkReport,
   WALLET_PUBLIC_KEY_READ_ERROR,
   WALLET_UNSUPPORTED_SIGNING_MESSAGE,
   type SolanaWalletProvider,
@@ -1078,6 +1079,59 @@ document.body.insertAdjacentHTML(
         </div>
       </div>
     </div>
+
+    <div
+      id="walletNetworkModal"
+      class="low-sol-modal-overlay wallet-network-modal"
+      style="display: none;"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="walletNetworkModalTitle"
+    >
+      <div class="low-sol-modal-card">
+        <span
+          class="action-popup-icon action-popup-icon--error"
+          aria-hidden="true"
+        >!</span>
+
+        <h3 id="walletNetworkModalTitle">
+          Confirm wallet network
+        </h3>
+
+        <div
+          id="walletNetworkModalBody"
+          class="low-sol-modal-body"
+        ></div>
+
+        <label
+          class="wallet-network-dismiss-row"
+          for="walletNetworkDismissSession"
+        >
+          <input
+            id="walletNetworkDismissSession"
+            type="checkbox"
+          />
+          Don't show again for this session
+        </label>
+
+        <div class="action-popup-actions low-sol-modal-actions">
+          <button
+            id="walletNetworkContinueButton"
+            type="button"
+            class="primary-btn"
+          >
+            I understand, continue
+          </button>
+          <button
+            id="walletNetworkCancelButton"
+            type="button"
+            class="secondary-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   `
 );
 
@@ -1089,6 +1143,172 @@ function getSelectedNetwork(): SolanaNetwork {
     'mainnet'
     ? 'mainnet'
     : 'devnet';
+}
+
+function formatNetworkLabel(
+  network: SolanaNetwork
+): string {
+  return network ===
+    'mainnet'
+    ? 'Mainnet'
+    : 'Devnet';
+}
+
+let suppressWalletNetworkWarningSession =
+  false;
+
+let walletNetworkModalResolver:
+  | ((
+      proceed: boolean
+    ) => void)
+  | null = null;
+
+function hideWalletNetworkModal() {
+  walletNetworkModal.style.display =
+    'none';
+  document.body.classList.remove(
+    'low-sol-modal-open'
+  );
+}
+
+function resolveWalletNetworkModal(
+  proceed: boolean
+) {
+  hideWalletNetworkModal();
+
+  const resolver =
+    walletNetworkModalResolver;
+
+  walletNetworkModalResolver =
+    null;
+  resolver?.(proceed);
+}
+
+function buildWalletNetworkModalMessage(
+  report: ReturnType<
+    typeof getWalletNetworkReport
+  >
+): string {
+  const selectedLabel =
+    formatNetworkLabel(
+      report.appNetwork
+    );
+
+  let message =
+    `You are about to sign a transaction on ${selectedLabel}. Make sure your wallet is also set to ${selectedLabel}.`;
+
+  if (
+    report.status ===
+      'mismatch' &&
+    report.walletNetwork
+  ) {
+    message +=
+      `<br><br><strong>Your wallet appears to be on ${formatNetworkLabel(report.walletNetwork)}.</strong>`;
+  }
+
+  return message;
+}
+
+function shouldPromptWalletNetworkCheck(
+  report: ReturnType<
+    typeof getWalletNetworkReport
+  >
+): boolean {
+  if (
+    suppressWalletNetworkWarningSession
+  ) {
+    return false;
+  }
+
+  if (
+    report.status ===
+    'match'
+  ) {
+    return false;
+  }
+
+  if (
+    report.status ===
+    'unknown'
+  ) {
+    return (
+      report.appNetwork ===
+      'mainnet'
+    );
+  }
+
+  return true;
+}
+
+function showWalletNetworkModal(
+  report: ReturnType<
+    typeof getWalletNetworkReport
+  >
+): Promise<boolean> {
+  if (
+    walletNetworkModalResolver
+  ) {
+    resolveWalletNetworkModal(
+      false
+    );
+  }
+
+  walletNetworkModalBody.innerHTML =
+    buildWalletNetworkModalMessage(
+      report
+    );
+  walletNetworkDismissSessionCheckbox.checked =
+    false;
+
+  document.body.classList.add(
+    'low-sol-modal-open'
+  );
+  walletNetworkModal.style.display =
+    'flex';
+
+  return new Promise(
+    (resolve) => {
+      walletNetworkModalResolver =
+        resolve;
+    }
+  );
+}
+
+async function ensureWalletNetworkConfirmedForSigning(
+  provider: WalletProvider,
+  walletAddress: string,
+  network: SolanaNetwork = getSelectedNetwork()
+): Promise<boolean> {
+  const report =
+    getWalletNetworkReport(
+      getSelectedWalletId(),
+      network,
+      provider,
+      walletAddress
+    );
+
+  if (
+    !shouldPromptWalletNetworkCheck(
+      report
+    )
+  ) {
+    return true;
+  }
+
+  const proceed =
+    await showWalletNetworkModal(
+      report
+    );
+
+  if (
+    proceed &&
+    walletNetworkDismissSessionCheckbox.checked
+  ) {
+    suppressWalletNetworkWarningSession =
+      true;
+  }
+
+  return proceed;
 }
 
 function isMainnetWriteBlocked(): boolean {
@@ -1401,6 +1621,31 @@ const lowSolUnderstandButton =
 const lowSolCancelButton =
   document.getElementById(
     'lowSolCancelButton'
+  ) as HTMLButtonElement;
+
+const walletNetworkModal =
+  document.getElementById(
+    'walletNetworkModal'
+  ) as HTMLDivElement;
+
+const walletNetworkModalBody =
+  document.getElementById(
+    'walletNetworkModalBody'
+  ) as HTMLDivElement;
+
+const walletNetworkDismissSessionCheckbox =
+  document.getElementById(
+    'walletNetworkDismissSession'
+  ) as HTMLInputElement;
+
+const walletNetworkContinueButton =
+  document.getElementById(
+    'walletNetworkContinueButton'
+  ) as HTMLButtonElement;
+
+const walletNetworkCancelButton =
+  document.getElementById(
+    'walletNetworkCancelButton'
   ) as HTMLButtonElement;
 
 setWalletNetworkResolver(
@@ -2274,6 +2519,18 @@ async function createUmiTokenFromPendingVanity(
     );
   }
 
+  if (
+    !(await ensureWalletNetworkConfirmedForSigning(
+      pending.writeWallet,
+      pending.writeWalletAddress,
+      pending.network
+    ))
+  ) {
+    throw new Error(
+      'Wallet network confirmation cancelled.'
+    );
+  }
+
   showVanityWalletConfirmPopup(
     'Creating token...'
   );
@@ -2309,6 +2566,18 @@ async function finishTokenCreationAfterUmi(
   showWalletConfirmPopup(
     'Minting supply...'
   );
+
+  if (
+    !(await ensureWalletNetworkConfirmedForSigning(
+      ctx.writeWallet,
+      ctx.writeWalletAddress,
+      ctx.network
+    ))
+  ) {
+    throw new Error(
+      'Wallet network confirmation cancelled.'
+    );
+  }
 
   await mintSupply({
     network:
@@ -2361,6 +2630,26 @@ async function finishTokenCreationAfterUmi(
         state: 'loading',
       }
     );
+  }
+
+  const shouldRevokeAuthorities =
+    ctx.revokeMintAfterCreate ||
+    ctx.revokeFreezeAfterCreate;
+
+  if (
+    shouldRevokeAuthorities
+  ) {
+    if (
+      !(await ensureWalletNetworkConfirmedForSigning(
+        ctx.writeWallet,
+        ctx.writeWalletAddress,
+        ctx.network
+      ))
+    ) {
+      throw new Error(
+        'Wallet network confirmation cancelled.'
+      );
+    }
   }
 
   await revokeAuthorities({
@@ -3219,6 +3508,24 @@ lowSolCancelButton.addEventListener(
     progressStatus.innerHTML =
       'Token creation cancelled.';
     resolveLowSolBalanceModal(
+      false
+    );
+  }
+);
+
+walletNetworkContinueButton.addEventListener(
+  'click',
+  () => {
+    resolveWalletNetworkModal(
+      true
+    );
+  }
+);
+
+walletNetworkCancelButton.addEventListener(
+  'click',
+  () => {
+    resolveWalletNetworkModal(
       false
     );
   }
@@ -5198,6 +5505,16 @@ tokenForm.addEventListener('submit', async (event) => {
       'Creating token...'
     );
 
+    if (
+      !(await ensureWalletNetworkConfirmedForSigning(
+        writeWallet,
+        writeWalletAddress,
+        selectedNetwork
+      ))
+    ) {
+      return;
+    }
+
     let umiResult;
 
     try {
@@ -5473,6 +5790,17 @@ manageTokenButton.addEventListener(
       manageTokenStatus.innerHTML =
         feedbackMessages.join('<br>') || 'No revoke actions selected.';
       hideActionPopup(POPUP_READ_MS);
+      return;
+    }
+
+    if (
+      !(await ensureWalletNetworkConfirmedForSigning(
+        walletSession.provider,
+        walletSession.address,
+        selectedNetwork
+      ))
+    ) {
+      endAction();
       return;
     }
 
@@ -5807,6 +6135,17 @@ showWalletConfirmPopup(
   'Updating token metadata...'
 );
 
+if (
+  !(await ensureWalletNetworkConfirmedForSigning(
+    walletSession.provider,
+    walletSession.address,
+    selectedNetwork
+  ))
+) {
+  endAction();
+  return;
+}
+
 await updateTokenMetadata({
   network:
     selectedNetwork,
@@ -5947,6 +6286,17 @@ hideActionPopup(POPUP_READ_MS);
       showWalletConfirmPopup(
         'Locking metadata permanently...'
       );
+
+      if (
+        !(await ensureWalletNetworkConfirmedForSigning(
+          walletSession.provider,
+          walletSession.address,
+          selectedNetwork
+        ))
+      ) {
+        endAction();
+        return;
+      }
 
       await lockTokenMetadata(
         walletSession.provider,

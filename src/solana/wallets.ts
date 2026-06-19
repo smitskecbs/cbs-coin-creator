@@ -1313,6 +1313,261 @@ export function getWalletProvider(
   )?.provider;
 }
 
+export type WalletNetworkReportStatus =
+  | 'match'
+  | 'mismatch'
+  | 'unknown';
+
+export type WalletNetworkReport = {
+  status: WalletNetworkReportStatus;
+  appNetwork: SolanaNetwork;
+  walletNetwork?: SolanaNetwork;
+};
+
+function parseSolanaChainId(
+  chain: string
+): SolanaNetwork | null {
+  const normalized =
+    chain
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized.includes(
+      'devnet'
+    ) ||
+    normalized ===
+      'solana:103'
+  ) {
+    return 'devnet';
+  }
+
+  if (
+    normalized.includes(
+      'mainnet'
+    ) ||
+    normalized.includes(
+      'mainnet-beta'
+    ) ||
+    normalized ===
+      'solana:101' ||
+    normalized ===
+      'solana:mainnet'
+  ) {
+    return 'mainnet';
+  }
+
+  return null;
+}
+
+function readNetworkFromProvider(
+  provider: SolanaWalletProvider
+): SolanaNetwork | null {
+  const raw =
+    provider as {
+      network?: unknown;
+      chain?: unknown;
+      cluster?: unknown;
+    };
+
+  for (const value of [
+    raw.network,
+    raw.chain,
+    raw.cluster,
+  ]) {
+    if (
+      typeof value !==
+      'string'
+    ) {
+      continue;
+    }
+
+    const parsed =
+      parseSolanaChainId(
+        value
+      );
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function readNetworkFromWalletStandard(
+  walletId: string,
+  walletAddress?: string
+): SolanaNetwork | null {
+  const detected =
+    getDetectedWallet(
+      walletId
+    );
+
+  if (
+    !detected
+  ) {
+    return null;
+  }
+
+  const detectedName =
+    detected.name
+      .trim()
+      .toLowerCase();
+
+  for (const wallet of getWalletStandardWallets()) {
+    const walletName =
+      wallet.name
+        .trim()
+        .toLowerCase();
+
+    if (
+      walletName !==
+      detectedName
+    ) {
+      continue;
+    }
+
+    for (const account of wallet.accounts) {
+      if (
+        walletAddress &&
+        account.address !==
+          walletAddress
+      ) {
+        continue;
+      }
+
+      const chains =
+        (
+          account as {
+            chains?: readonly string[];
+          }
+        ).chains;
+
+      if (
+        !chains ||
+        chains.length ===
+          0
+      ) {
+        continue;
+      }
+
+      let hasMainnet =
+        false;
+      let hasDevnet =
+        false;
+
+      for (const chain of chains) {
+        const parsed =
+          parseSolanaChainId(
+            chain
+          );
+
+        if (
+          parsed ===
+          'mainnet'
+        ) {
+          hasMainnet =
+            true;
+        }
+
+        if (
+          parsed ===
+          'devnet'
+        ) {
+          hasDevnet =
+            true;
+        }
+      }
+
+      if (
+        hasMainnet &&
+        !hasDevnet
+      ) {
+        return 'mainnet';
+      }
+
+      if (
+        hasDevnet &&
+        !hasMainnet
+      ) {
+        return 'devnet';
+      }
+
+      if (
+        hasMainnet
+      ) {
+        return 'mainnet';
+      }
+
+      if (
+        hasDevnet
+      ) {
+        return 'devnet';
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getWalletNetworkReport(
+  walletId: string,
+  appNetwork: SolanaNetwork,
+  provider?: SolanaWalletProvider,
+  walletAddress?: string
+): WalletNetworkReport {
+  let walletNetwork:
+    | SolanaNetwork
+    | null = null;
+
+  if (provider) {
+    walletNetwork =
+      readNetworkFromProvider(
+        provider
+      );
+  }
+
+  if (
+    !walletNetwork
+  ) {
+    walletNetwork =
+      readNetworkFromWalletStandard(
+        walletId,
+        walletAddress
+      );
+  }
+
+  if (
+    !walletNetwork
+  ) {
+    return {
+      status:
+        'unknown',
+      appNetwork,
+    };
+  }
+
+  if (
+    walletNetwork ===
+    appNetwork
+  ) {
+    return {
+      status:
+        'match',
+      appNetwork,
+      walletNetwork,
+    };
+  }
+
+  return {
+    status:
+      'mismatch',
+    appNetwork,
+    walletNetwork,
+  };
+}
+
 export function subscribeToWalletChanges(
   listener: () => void
 ): () => void {
