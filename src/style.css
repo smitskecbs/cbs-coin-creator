@@ -186,12 +186,13 @@ body {
 }
 
 .hero-card {
-  padding: 24px 24px 32px;
+  width: 100%;
+  padding: 20px;
   border: 1px solid rgba(216, 111, 0, 0.2);
-  border-radius: 20px;
+  border-radius: 24px;
   background: #ffffff;
   box-shadow: 0 10px 40px rgba(216, 111, 0, 0.08);
-  text-align: center;
+  text-align: left;
 }
 
 h1 {
@@ -210,8 +211,7 @@ h1 {
 .network-panel {
   margin-top: 18px;
   width: 100%;
-  max-width: 420px;
-  margin-inline: auto;
+  max-width: none;
   padding: 16px 18px 18px;
   border-radius: 18px;
   background: linear-gradient(
@@ -363,7 +363,7 @@ button.primary-btn[disabled] {
   margin-top: 20px;
   display: grid;
   gap: 12px;
-  justify-items: center;
+  justify-items: stretch;
 }
 
 .wallet-panel label {
@@ -372,7 +372,7 @@ button.primary-btn[disabled] {
 }
 
 .wallet-panel select {
-  width: min(100%, 340px);
+  width: 100%;
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid rgba(216, 111, 0, 0.25);
@@ -394,7 +394,7 @@ button.primary-btn[disabled] {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  width: min(100%, 420px);
+  width: 100%;
 }
 
 .wallet-panel-actions .primary-btn,
@@ -492,6 +492,7 @@ button.primary-btn[disabled] {
   color: #d86f00;
   font-weight: 800;
   text-decoration: none;
+  text-align: center;
 }
 
 .vanity-link:hover {
@@ -507,8 +508,10 @@ button.primary-btn[disabled] {
 }
 
 .token-form h2 {
-  text-align: center;
   margin-bottom: 4px;
+  color: #111111;
+  font-size: clamp(20px, 4vw, 26px);
+  text-align: center;
 }
 
 .token-form label {
@@ -535,10 +538,6 @@ button.primary-btn[disabled] {
   color: #222222;
   font-size: 16px;
   resize: vertical;
-}
-
-.token-form h2 {
-  color: #111111;
 }
 
 .helper-text {
