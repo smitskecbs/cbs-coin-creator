@@ -497,6 +497,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             required
           />
         </label>
+
+        <p class="helper-text token-identity-warning">
+          Token names, symbols and logos are not unique on Solana. Always verify the mint address.
+        </p>
+
         <label>
   Description
   <textarea
@@ -3596,8 +3601,8 @@ const knownTokenWarningBox =
 
 const KNOWN_TOKEN_PROJECTS = [
   {
-    name: 'Bonk',
-    symbols: ['BONK'],
+    name: 'Solana',
+    symbols: ['SOL'],
   },
   {
     name: 'USD Coin',
@@ -3608,20 +3613,44 @@ const KNOWN_TOKEN_PROJECTS = [
     symbols: ['USDT'],
   },
   {
-    name: 'Solana',
-    symbols: ['SOL'],
-  },
-  {
     name: 'Jupiter',
     symbols: ['JUP', 'JLP'],
   },
   {
-    name: 'Raydium',
-    symbols: ['RAY'],
+    name: 'Jito',
+    symbols: ['JTO'],
   },
   {
-    name: 'dogwifhat',
-    symbols: ['WIF'],
+    name: 'Jito Staked SOL',
+    symbols: ['JITOSOL'],
+  },
+  {
+    name: 'Kamino',
+    symbols: ['KMNO'],
+  },
+  {
+    name: 'Drift',
+    symbols: ['DRIFT'],
+  },
+  {
+    name: 'Helium',
+    symbols: ['HNT'],
+  },
+  {
+    name: 'Tensor',
+    symbols: ['TNSR'],
+  },
+  {
+    name: 'Backpack',
+    symbols: ['BACKPACK'],
+  },
+  {
+    name: 'Nomu',
+    symbols: ['NOMU'],
+  },
+  {
+    name: 'Raydium',
+    symbols: ['RAY'],
   },
   {
     name: 'Orca',
@@ -3630,10 +3659,6 @@ const KNOWN_TOKEN_PROJECTS = [
   {
     name: 'Pyth Network',
     symbols: ['PYTH'],
-  },
-  {
-    name: 'Jito',
-    symbols: ['JTO'],
   },
   {
     name: 'Render',
@@ -3648,12 +3673,40 @@ const KNOWN_TOKEN_PROJECTS = [
     symbols: ['MNGO'],
   },
   {
-    name: 'Samoyedcoin',
-    symbols: ['SAMO'],
+    name: 'Bonk',
+    symbols: ['BONK'],
+  },
+  {
+    name: 'dogwifhat',
+    symbols: ['WIF'],
   },
   {
     name: 'Popcat',
     symbols: ['POPCAT'],
+  },
+  {
+    name: 'Pudgy Penguins',
+    symbols: ['PENGU'],
+  },
+  {
+    name: 'Trump',
+    symbols: ['TRUMP'],
+  },
+  {
+    name: 'Fartcoin',
+    symbols: ['FARTCOIN'],
+  },
+  {
+    name: 'Goatseus Maximus',
+    symbols: ['GOAT'],
+  },
+  {
+    name: 'Moo Deng',
+    symbols: ['MOODENG'],
+  },
+  {
+    name: 'Samoyedcoin',
+    symbols: ['SAMO'],
   },
   {
     name: 'cat in a dogs world',
@@ -3666,6 +3719,26 @@ const KNOWN_TOKEN_PROJECTS = [
   {
     name: 'Wen',
     symbols: ['WEN'],
+  },
+  {
+    name: 'Wrapped Bitcoin',
+    symbols: ['WBTC'],
+  },
+  {
+    name: 'Wrapped Ether',
+    symbols: ['WETH'],
+  },
+  {
+    name: 'Euro Coin',
+    symbols: ['EURC'],
+  },
+  {
+    name: 'USDS',
+    symbols: ['USDS'],
+  },
+  {
+    name: 'CBS Coin',
+    symbols: ['CBS', 'CBSCOIN', 'CBS_COIN'],
   },
 ] as const;
 
@@ -3740,11 +3813,11 @@ function renderKnownTokenWarning(
   knownTokenWarningBox.innerHTML = `
     <strong>Known project warning</strong>
     <br><br>
-    This token ${reasonText} matches the well-known project
+    This token ${reasonText} matches the known project
     <strong>${match.project.name}</strong>
     (${match.project.symbols.join(', ')}).
     <br><br>
-    Creating a look-alike token may mislead users. Verify the official mint address before buying or sharing any token.
+    This name or symbol matches a known project. Names, symbols and logos can be copied on Solana. Always verify the mint address before trusting a token.
   `;
 }
 
@@ -5319,7 +5392,7 @@ tokenForm.addEventListener('submit', async (event) => {
   if (knownMatch) {
     showActionPopup(
       'Known project match',
-      `This token matches <strong>${knownMatch.project.name}</strong> (${knownMatch.project.symbols.join(', ')}). Make sure you are not impersonating an existing project.`,
+      `This token matches <strong>${knownMatch.project.name}</strong> (${knownMatch.project.symbols.join(', ')}).<br><br>This name or symbol matches a known project. Names, symbols and logos can be copied on Solana. Always verify the mint address before trusting a token.`,
       {
         showStopButton: false,
         state: 'error',
