@@ -19,11 +19,49 @@ const ALLOWED_MIME_TYPES = new Set([
 const ALLOWED_REQUEST_HEADERS =
   "content-type, x-wallet-address, x-upload-message, x-upload-signature";
 
+const LOG_PREFIX = "[upload-to-pinata]";
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+
+function logUploadDiag(phase, details = {}) {
+  console.log(LOG_PREFIX, phase, details);
+}
+
+function logUploadWarn(phase, details = {}) {
+  console.warn(LOG_PREFIX, phase, details);
+}
+
+function logUploadError(phase, details = {}) {
+  console.error(LOG_PREFIX, phase, details);
+}
+
+function safeErrorDetails(error) {
+  if (!error || typeof error !== "object") {
+    return {
+      errorName: "UnknownError",
+      errorMessage: "Unknown error",
+    };
+  }
+
+  return {
+    errorName:
+      typeof error.name === "string"
+        ? error.name
+        : "Error",
+    errorMessage:
+      typeof error.message === "string"
+        ? error.message
+        : "Unknown error",
+    errorCode:
+      typeof error.code === "string"
+        ? error.code
+        : undefined,
+  };
+}
 
 function normalizeOrigin(origin) {
   if (typeof origin !== "string") {
@@ -53,6 +91,30 @@ function getRequestOrigin(req) {
   const origin = req.headers?.origin;
 
   return normalizeOrigin(origin);
+}
+
+function getAuthHeaderPresence(req) {
+  return {
+    hasWalletAddressHeader: Boolean(req.headers["x-wallet-address"]),
+    hasUploadMessageHeader: Boolean(req.headers["x-upload-message"]),
+    hasUploadSignatureHeader: Boolean(req.headers["x-upload-signature"]),
+  };
+}
+
+function getRequestDiagnostics(req) {
+  const contentLength = req.headers["content-length"];
+
+  return {
+    method: req.method ?? "(unknown)",
+    receivedOrigin: getRequestOrigin(req) ?? "(none)",
+    pinataJwtExists: Boolean(process.env.PINATA_JWT),
+    ...getAuthHeaderPresence(req),
+    contentType: req.headers["content-type"] ?? "(none)",
+    contentLength:
+      typeof contentLength === "string"
+        ? contentLength
+        : "(none)",
+  };
 }
 
 function setCorsHeaders(req, res) {
@@ -90,6 +152,7 @@ function handleCorsDebugGet(req, res) {
 
   sendJson(res, 200, {
     ok: true,
+    envReady: Boolean(process.env.PINATA_JWT),
     allowedOrigins: ALLOWED_ORIGINS,
     receivedOrigin: origin ?? "(none)",
     originAllowed: origin ? isAllowedOrigin(origin) : false,
@@ -98,15 +161,15 @@ function handleCorsDebugGet(req, res) {
 
 function parseUploadAuthMessage(message) {
   if (typeof message !== "string" || !message.trim()) {
-    return { ok: false, reason: "missing message" };
+    return { ok: false, reasonCode: "missing_message" };
   }
 
   if (!message.includes("App: CBS Token Builder")) {
-    return { ok: false, reason: "invalid app name" };
+    return { ok: false, reasonCode: "invalid_app_name" };
   }
 
   if (!message.includes("Purpose: Pinata upload")) {
-    return { ok: false, reason: "invalid purpose" };
+    return { ok: false, reasonCode: "invalid_purpose" };
   }
 
   const walletMatch = message.match(/^Wallet:\s*(.+)$/m);
@@ -114,7 +177,7 @@ function parseUploadAuthMessage(message) {
   const expiresMatch = message.match(/^Expires at \(unix\):\s*(\d+)$/m);
 
   if (!walletMatch || !issuedMatch || !expiresMatch) {
-    return { ok: false, reason: "invalid message format" };
+    return { ok: false, reasonCode: "invalid_message_format" };
   }
 
   const walletAddress = walletMatch[1].trim();
@@ -122,29 +185,29 @@ function parseUploadAuthMessage(message) {
   const expiresAt = Number(expiresMatch[1]);
 
   if (!Number.isInteger(issuedAt) || !Number.isInteger(expiresAt)) {
-    return { ok: false, reason: "invalid timestamp" };
+    return { ok: false, reasonCode: "invalid_timestamp" };
   }
 
   if (expiresAt <= issuedAt) {
-    return { ok: false, reason: "invalid expiry" };
+    return { ok: false, reasonCode: "invalid_expiry" };
   }
 
   if (expiresAt - issuedAt > MAX_AUTH_AGE_SECONDS) {
-    return { ok: false, reason: "expiry window too long" };
+    return { ok: false, reasonCode: "expiry_window_too_long" };
   }
 
   const now = Math.floor(Date.now() / 1000);
 
   if (issuedAt > now + MAX_FUTURE_SKEW_SECONDS) {
-    return { ok: false, reason: "timestamp too far in future" };
+    return { ok: false, reasonCode: "timestamp_too_far_in_future" };
   }
 
   if (now > expiresAt) {
-    return { ok: false, reason: "authorization expired" };
+    return { ok: false, reasonCode: "authorization_expired" };
   }
 
   if (now - issuedAt > MAX_AUTH_AGE_SECONDS) {
-    return { ok: false, reason: "authorization too old" };
+    return { ok: false, reasonCode: "authorization_too_old" };
   }
 
   return {
@@ -162,63 +225,137 @@ function decodeUploadAuthMessageHeader(encodedMessage) {
 
   try {
     return Buffer.from(encodedMessage, "base64").toString("utf8");
-  } catch (error) {
-    console.warn("Upload auth message decode failed:", error);
+  } catch {
     return null;
   }
 }
 
-async function verifyUploadAuthorization(req) {
-  const { PublicKey } = await import("@solana/web3.js");
+function decodeSolanaPublicKeyBytes(walletAddress, bs58) {
+  if (typeof walletAddress !== "string" || !walletAddress.trim()) {
+    return null;
+  }
+
+  try {
+    const publicKeyBytes = bs58.decode(walletAddress.trim());
+
+    if (publicKeyBytes.length !== 32) {
+      return null;
+    }
+
+    return publicKeyBytes;
+  } catch {
+    return null;
+  }
+}
+
+async function loadAuthCryptoModules() {
   const bs58Module = await import("bs58");
   const naclModule = await import("tweetnacl");
-  const bs58 = bs58Module.default ?? bs58Module;
-  const nacl = naclModule.default ?? naclModule;
 
+  return {
+    bs58: bs58Module.default ?? bs58Module,
+    nacl: naclModule.default ?? naclModule,
+  };
+}
+
+async function verifyUploadAuthorization(req) {
   const walletAddress = req.headers["x-wallet-address"];
   const encodedMessage = req.headers["x-upload-message"];
   const signature = req.headers["x-upload-signature"];
 
   if (!walletAddress || !encodedMessage || !signature) {
-    return { ok: false, status: 401, error: "Upload authorization required." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Upload authorization required.",
+      reasonCode: "missing_auth_headers",
+      walletAddress:
+        typeof walletAddress === "string"
+          ? walletAddress
+          : undefined,
+    };
   }
 
   const message = decodeUploadAuthMessageHeader(encodedMessage);
 
   if (!message) {
-    return { ok: false, status: 401, error: "Invalid upload authorization." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid upload authorization.",
+      reasonCode: "invalid_message_encoding",
+      walletAddress,
+    };
   }
 
-  let publicKey;
+  let bs58;
+  let nacl;
 
   try {
-    publicKey = new PublicKey(walletAddress);
-  } catch {
-    return { ok: false, status: 401, error: "Invalid wallet address." };
+    ({ bs58, nacl } = await loadAuthCryptoModules());
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      error: "Pinata upload failed.",
+      reasonCode: "auth_module_import_failed",
+      walletAddress,
+      ...safeErrorDetails(error),
+    };
+  }
+
+  const publicKeyBytes = decodeSolanaPublicKeyBytes(
+    walletAddress,
+    bs58
+  );
+
+  if (!publicKeyBytes) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid wallet address.",
+      reasonCode: "invalid_wallet_address",
+      walletAddress,
+    };
   }
 
   const parsedMessage = parseUploadAuthMessage(message);
 
   if (!parsedMessage.ok) {
-    console.warn("Upload auth message rejected:", parsedMessage.reason);
-    return { ok: false, status: 401, error: "Invalid upload authorization." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid upload authorization.",
+      reasonCode: parsedMessage.reasonCode,
+      walletAddress,
+    };
   }
 
   if (parsedMessage.walletAddress !== walletAddress) {
-    return { ok: false, status: 401, error: "Upload authorization wallet mismatch." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Upload authorization wallet mismatch.",
+      reasonCode: "wallet_mismatch",
+      walletAddress,
+    };
   }
 
   let signatureBytes;
 
   try {
     signatureBytes = bs58.decode(signature);
-  } catch (error) {
-    console.warn("Upload auth signature decode failed:", error);
-    return { ok: false, status: 401, error: "Invalid upload signature." };
+  } catch {
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid upload signature.",
+      reasonCode: "signature_decode_failed",
+      walletAddress,
+    };
   }
 
   const messageBytes = new TextEncoder().encode(message);
-  const publicKeyBytes = publicKey.toBytes();
   const valid = nacl.sign.detached.verify(
     messageBytes,
     signatureBytes,
@@ -226,10 +363,20 @@ async function verifyUploadAuthorization(req) {
   );
 
   if (!valid) {
-    return { ok: false, status: 401, error: "Invalid upload signature." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid upload signature.",
+      reasonCode: "signature_invalid",
+      walletAddress,
+    };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    reasonCode: "auth_verified",
+    walletAddress,
+  };
 }
 
 async function readBodyWithLimit(req, maxBytes) {
@@ -248,7 +395,10 @@ async function readBodyWithLimit(req, maxBytes) {
     chunks.push(chunk);
   }
 
-  return Buffer.concat(chunks);
+  return {
+    bodyBuffer: Buffer.concat(chunks),
+    bodySize: total,
+  };
 }
 
 function validateMultipartMime(bodyBuffer) {
@@ -268,30 +418,59 @@ function validateMultipartMime(bodyBuffer) {
   }
 
   if (mimeTypes.length === 0) {
-    return { ok: false, reason: "missing file content type" };
+    return {
+      ok: false,
+      reasonCode: "missing_file_content_type",
+    };
   }
 
   for (const mime of mimeTypes) {
     if (!ALLOWED_MIME_TYPES.has(mime)) {
-      return { ok: false, reason: `disallowed content type: ${mime}` };
+      return {
+        ok: false,
+        reasonCode: "disallowed_content_type",
+        mimeType: mime,
+      };
     }
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    reasonCode: "mime_validated",
+    mimeTypes,
+  };
 }
 
 async function handleUploadPost(req, res) {
+  const requestDiagnostics = getRequestDiagnostics(req);
+
+  logUploadDiag("post_request_received", requestDiagnostics);
+
   const authResult = await verifyUploadAuthorization(req);
+
+  logUploadDiag("auth_verification_result", {
+    success: authResult.ok,
+    reasonCode: authResult.reasonCode,
+    walletAddress: authResult.walletAddress,
+    ...(authResult.errorName
+      ? {
+          errorName: authResult.errorName,
+          errorMessage: authResult.errorMessage,
+          errorCode: authResult.errorCode,
+        }
+      : {}),
+  });
 
   if (!authResult.ok) {
     sendJson(res, authResult.status, { error: authResult.error });
     return;
   }
 
-  const pinataJwt = process.env.PINATA_JWT;
-
-  if (!pinataJwt) {
-    console.error("Missing PINATA_JWT on server");
+  if (!process.env.PINATA_JWT) {
+    logUploadError("env_check_failed", {
+      reasonCode: "missing_pinata_jwt",
+      pinataJwtExists: false,
+    });
     sendJson(res, 500, { error: "Upload service unavailable." });
     return;
   }
@@ -299,38 +478,112 @@ async function handleUploadPost(req, res) {
   const contentType = req.headers["content-type"];
 
   if (!contentType || !contentType.toLowerCase().startsWith("multipart/form-data")) {
+    logUploadWarn("content_type_rejected", {
+      reasonCode: "invalid_content_type",
+      contentType: contentType ?? "(none)",
+    });
     sendJson(res, 400, { error: "Invalid upload content type." });
     return;
   }
 
-  const bodyBuffer = await readBodyWithLimit(req, MAX_BODY_BYTES);
+  let bodyBuffer;
+  let bodySize;
+
+  try {
+    const bodyResult = await readBodyWithLimit(req, MAX_BODY_BYTES);
+    bodyBuffer = bodyResult.bodyBuffer;
+    bodySize = bodyResult.bodySize;
+  } catch (error) {
+    logUploadError("body_read_failed", {
+      reasonCode:
+        error?.code === "BODY_TOO_LARGE"
+          ? "body_too_large"
+          : "body_read_failed",
+      ...safeErrorDetails(error),
+    });
+    throw error;
+  }
+
+  logUploadDiag("body_read_complete", {
+    reasonCode: "body_read_complete",
+    bodySize,
+  });
+
   const mimeCheck = validateMultipartMime(bodyBuffer);
 
+  logUploadDiag("mime_validation_result", {
+    success: mimeCheck.ok,
+    reasonCode: mimeCheck.reasonCode,
+    mimeTypes: mimeCheck.mimeTypes,
+    mimeType: mimeCheck.mimeType,
+  });
+
   if (!mimeCheck.ok) {
-    console.warn("Upload MIME rejected:", mimeCheck.reason);
     sendJson(res, 400, { error: "Unsupported upload file type." });
     return;
   }
 
-  const pinataResponse = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${pinataJwt}`,
-      "Content-Type": contentType,
-    },
-    body: bodyBuffer,
-  });
+  let pinataResponse;
 
-  const data = await pinataResponse.json();
-
-  if (!pinataResponse.ok) {
-    console.error("Pinata upload failed:", {
-      status: pinataResponse.status,
-      data,
+  try {
+    pinataResponse = await fetch(
+      "https://api.pinata.cloud/pinning/pinFileToIPFS",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.PINATA_JWT}`,
+          "Content-Type": contentType,
+        },
+        body: bodyBuffer,
+      }
+    );
+  } catch (error) {
+    logUploadError("pinata_request_failed", {
+      reasonCode: "pinata_request_failed",
+      ...safeErrorDetails(error),
+      bodySize,
     });
     sendJson(res, 502, { error: "Pinata upload failed." });
     return;
   }
+
+  logUploadDiag("pinata_response_received", {
+    reasonCode: "pinata_response_received",
+    pinataStatus: pinataResponse.status,
+    bodySize,
+  });
+
+  let data;
+
+  try {
+    data = await pinataResponse.json();
+  } catch (error) {
+    logUploadError("pinata_response_parse_failed", {
+      reasonCode: "pinata_response_parse_failed",
+      pinataStatus: pinataResponse.status,
+      ...safeErrorDetails(error),
+      bodySize,
+    });
+    sendJson(res, 502, { error: "Pinata upload failed." });
+    return;
+  }
+
+  if (!pinataResponse.ok) {
+    logUploadError("pinata_upload_rejected", {
+      reasonCode: "pinata_upload_rejected",
+      pinataStatus: pinataResponse.status,
+      bodySize,
+    });
+    sendJson(res, 502, { error: "Pinata upload failed." });
+    return;
+  }
+
+  logUploadDiag("upload_success", {
+    reasonCode: "upload_success",
+    pinataStatus: pinataResponse.status,
+    bodySize,
+    hasIpfsHash: Boolean(data?.IpfsHash),
+  });
 
   sendJson(res, 200, {
     IpfsHash: data.IpfsHash,
@@ -360,7 +613,15 @@ export default async function handler(req, res) {
     await handleUploadPost(req, res);
   } catch (error) {
     setCorsHeaders(req, res);
-    console.error("upload-to-pinata handler error:", error);
+    logUploadError("handler_uncaught_error", {
+      reasonCode:
+        error?.code === "BODY_TOO_LARGE"
+          ? "body_too_large"
+          : "handler_uncaught_error",
+      method,
+      receivedOrigin: getRequestOrigin(req) ?? "(none)",
+      ...safeErrorDetails(error),
+    });
 
     if (error?.code === "BODY_TOO_LARGE") {
       return sendJson(res, 413, { error: "Upload exceeds the 2 MB limit." });
