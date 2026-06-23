@@ -56,7 +56,8 @@ body {
 .site-hero {
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: -10px;
   text-align: center;
 }
 
@@ -74,7 +75,7 @@ body {
   max-width: 520px;
   font-size: clamp(15px, 3vw, 17px);
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.4;
   color: #555555;
 }
 
@@ -90,13 +91,13 @@ body {
 .community-message {
   width: 100%;
   max-width: 420px;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .community-message-panel {
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 5px;
+  padding: 9px 12px;
   border: 1px solid rgba(216, 111, 0, 0.1);
   border-radius: 12px;
   background: rgba(255, 252, 248, 0.82);
@@ -122,28 +123,12 @@ body {
   color: #d86f00;
 }
 
-.community-message-copy {
-  display: grid;
-  gap: 3px;
-  justify-items: center;
-}
-
-.community-message-lead,
-.community-message-note {
+.community-message-body {
   margin: 0;
   max-width: 360px;
   color: #666666;
   font-size: 12px;
-  line-height: 1.4;
-}
-
-.community-message-lead {
-  color: #555555;
-}
-
-.community-message-emphasis {
-  color: #9a4f00;
-  font-weight: 700;
+  line-height: 1.38;
 }
 
 .page-section {
@@ -152,7 +137,7 @@ body {
 }
 
 .cbs-overview-card {
-  padding: 20px 22px;
+  padding: 18px 22px;
   border-radius: 20px;
   background: #ffffff;
   border: 1px solid rgba(216, 111, 0, 0.18);
@@ -161,15 +146,15 @@ body {
 }
 
 .cbs-overview-title {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 1.2rem;
   color: #111111;
 }
 
 .cbs-overview-text {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #555555;
-  line-height: 1.5;
+  line-height: 1.45;
   font-weight: 600;
 }
 
@@ -403,16 +388,6 @@ button.primary-btn[disabled] {
   min-width: 140px;
 }
 
-.wallet-test-btn {
-  border: 1px solid rgba(216, 111, 0, 0.35);
-  background: #ffffff;
-  color: #1a1a1a;
-  border-radius: 999px;
-  font-weight: 800;
-  cursor: pointer;
-  padding: 12px 18px;
-}
-
 .wallet-test-results {
   text-align: left;
   line-height: 1.45;
@@ -480,10 +455,25 @@ button.primary-btn[disabled] {
   color: #1f7a3f;
 }
 
-.wallet-test-verdict-incompatible {
-  background: rgba(216, 111, 0, 0.12);
-  border: 1px solid rgba(216, 111, 0, 0.28);
+.wallet-test-verdict-needs-sol {
+  background: rgba(255, 179, 71, 0.16);
+  border: 1px solid rgba(216, 111, 0, 0.32);
   color: #9a4d00;
+}
+
+.wallet-test-verdict-incompatible {
+  background: rgba(180, 40, 40, 0.1);
+  border: 1px solid rgba(180, 40, 40, 0.28);
+  color: #8a2b2b;
+}
+
+.wallet-test-verdict-helper {
+  margin: 8px 0 0;
+  color: #7a5a20;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
+  text-align: center;
 }
 
 .vanity-link {
@@ -571,7 +561,9 @@ details.accordion > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
+  width: 100%;
+  min-height: 48px;
   padding: 12px 16px;
   border-radius: 999px;
   border: 1px solid rgba(216, 111, 0, 0.22);
@@ -579,10 +571,22 @@ details.accordion > summary {
   box-shadow: 0 10px 30px rgba(216, 111, 0, 0.16);
   font-weight: 900;
   color: #ffffff;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
     background 120ms ease;
+}
+
+details.accordion > summary:hover {
+  box-shadow: 0 12px 34px rgba(216, 111, 0, 0.22);
+  background: linear-gradient(135deg, #ffc266, #df7a12);
+}
+
+details.accordion > summary:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
 }
 
 details.accordion > summary:active {
@@ -593,6 +597,32 @@ details.accordion > summary:active {
 
 details.accordion > summary::-webkit-details-marker {
   display: none;
+}
+
+details.accordion[disabled] > summary {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.accordion-summary-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.3;
+}
+
+.accordion-summary--busy {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.wallet-test-accordion {
+  margin-top: 14px;
+}
+
+.wallet-test-panel {
+  padding: 12px;
 }
 
 .accordion-content {
@@ -614,8 +644,11 @@ details.accordion > summary::-webkit-details-marker {
 }
 
 .accordion-chevron {
+  flex: none;
   color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
   font-weight: 900;
+  line-height: 1;
   transition: transform 180ms ease;
 }
 
@@ -1286,8 +1319,23 @@ body.low-sol-modal-open {
     max-width: 100%;
   }
 
+  .site-hero {
+    gap: 6px;
+    margin-bottom: -8px;
+  }
+
   .site-banner {
     max-width: 100%;
+  }
+
+  .community-message-panel {
+    gap: 4px;
+    padding: 7px 10px;
+  }
+
+  .community-message-body {
+    font-size: 11.5px;
+    line-height: 1.35;
   }
 
   .hero-card {
@@ -1296,7 +1344,7 @@ body.low-sol-modal-open {
   }
 
   .cbs-overview-card {
-    padding: 16px;
+    padding: 14px 16px;
   }
 
   .cbs-footer-links {
@@ -1323,6 +1371,12 @@ body.low-sol-modal-open {
 @media (max-width: 520px) {
   details.accordion > summary {
     padding: 12px 14px;
+    min-height: 48px;
+    gap: 12px;
+  }
+
+  .accordion-chevron {
+    font-size: 13px;
   }
 
   #vanitySearchPopup .action-popup-card {

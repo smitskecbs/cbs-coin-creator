@@ -177,7 +177,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       />
 
       <p class="site-hero-subtitle">
-        Create or manage Solana
+        Build Solana
         <img
           class="solana-logomark"
           src="/assets/solana-logomark.svg"
@@ -186,7 +186,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           height="12"
           loading="lazy"
         />
-        tokens with simple, community-built tools.
+        tokens with simple, beginner-friendly tools.
       </p>
 
       <div
@@ -210,18 +210,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             </svg>
             Built for the Solana Community
           </h3>
-          <div class="community-message-copy">
-            <p class="community-message-lead">
-              The CBS Token Builder is
-              <strong class="community-message-emphasis">free to use</strong>.
-            </p>
-            <p class="community-message-note">
-              CBS does not charge platform fees.
-            </p>
-            <p class="community-message-note">
-              You only pay Solana network fees and optional third-party service fees when using external services.
-            </p>
-          </div>
+          <p class="community-message-body">
+            CBS Token Builder is free to use.
+            You only pay Solana network fees and optional third-party service fees.
+          </p>
         </div>
       </div>
     </header>
@@ -231,7 +223,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         What can you do here?
       </h2>
       <p class="cbs-overview-text">
-        Use the CBS Token Builder to create SPL tokens, configure token details, add metadata and prepare your project for launch.
+        Create a Solana token, set supply and decimals, add metadata, and prepare your project for launch.
       </p>
       <ul class="cbs-overview-list">
         <li>Create a Solana token</li>
@@ -285,31 +277,34 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="connectWallet" class="primary-btn">
             Connect Wallet
           </button>
-
-          ${
-            isDevelopment
-              ? `
-          <button
-            id="testWallet"
-            type="button"
-            class="secondary-btn wallet-test-btn"
-          >
-            Test Wallet
-          </button>
-          `
-              : ''
-          }
         </div>
       </div>
 
       ${
         isDevelopment
           ? `
-      <div
-        id="walletTestResults"
-        class="wallet-box wallet-test-results"
-        style="display: none;"
-      ></div>
+      <details
+        id="walletTestAccordion"
+        class="accordion wallet-test-accordion"
+      >
+        <summary id="walletTestSummary">
+          <span class="accordion-summary-label">
+            Test Wallet
+          </span>
+          <span
+            class="accordion-chevron"
+            aria-hidden="true"
+          >▾</span>
+        </summary>
+        <div class="accordion-content wallet-test-panel">
+          <div
+            id="walletTestResults"
+            class="wallet-test-results"
+          >
+            Open this section to run a wallet compatibility check.
+          </div>
+        </div>
+      </details>
       `
           : ''
       }
@@ -380,7 +375,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="wallet-box">
   <details class="accordion vanity-accordion">
     <summary>
-      <span>Advanced: Vanity Mint Address (experienced users)</span>
+      <span class="accordion-summary-label">Advanced: Vanity Mint Address (experienced users)</span>
       <span class="accordion-chevron" aria-hidden="true">▾</span>
     </summary>
 
@@ -528,7 +523,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 </label>
 <details class="accordion socials-accordion">
   <summary>
-    <span>Add social links</span>
+    <span class="accordion-summary-label">Add social links</span>
     <span class="accordion-chevron" aria-hidden="true">▾</span>
   </summary>
   <div class="accordion-content">
@@ -675,7 +670,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
       <details class="accordion revoke-lock-accordion">
         <summary>
-          <span>Revoke / lock authorities</span>
+          <span class="accordion-summary-label">Revoke / lock authorities</span>
           <span class="accordion-chevron" aria-hidden="true">▾</span>
         </summary>
         <div class="accordion-content">
@@ -837,7 +832,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
       <details class="accordion update-metadata-accordion">
         <summary>
-          <span>Update token metadata</span>
+          <span class="accordion-summary-label">Update token metadata</span>
           <span class="accordion-chevron" aria-hidden="true">▾</span>
         </summary>
         <div class="accordion-content">
@@ -1557,10 +1552,15 @@ const walletDetectedHint =
 const connectButton =
   document.getElementById('connectWallet') as HTMLButtonElement;
 
-const testWalletButton =
+const walletTestAccordion =
   document.getElementById(
-    'testWallet'
-  ) as HTMLButtonElement | null;
+    'walletTestAccordion'
+  ) as HTMLDetailsElement | null;
+
+const walletTestSummary =
+  document.getElementById(
+    'walletTestSummary'
+  ) as HTMLElement | null;
 
 const walletTestResults =
   document.getElementById(
@@ -1841,10 +1841,12 @@ function refreshWalletSelector() {
       true;
 
     if (
-      testWalletButton
+      walletTestAccordion
     ) {
-      testWalletButton.disabled =
-        true;
+      walletTestAccordion.toggleAttribute(
+        'disabled',
+        true
+      );
     }
 
     return;
@@ -1854,10 +1856,11 @@ function refreshWalletSelector() {
     false;
 
   if (
-    testWalletButton
+    walletTestAccordion
   ) {
-    testWalletButton.disabled =
-      false;
+    walletTestAccordion.removeAttribute(
+      'disabled'
+    );
   }
 
   for (const wallet of wallets) {
@@ -4821,20 +4824,51 @@ function renderWalletCompatibilityResults(
     errorMessage,
   } = options;
 
-  const verdictClass =
-    compatible
-      ? 'wallet-test-verdict-compatible'
-      : 'wallet-test-verdict-incompatible';
-
-  const verdictLabel =
-    compatible
-      ? 'Compatible for token creation'
-      : 'Connection works but token creation may fail';
-
   const signingDetected =
     signing.signTransaction ||
     signing.signAndSendTransaction ||
     signing.signAllTransactions;
+
+  const hasPositiveBalance =
+    balanceFetched &&
+    balanceSol !==
+      undefined &&
+    balanceSol >
+      0;
+
+  const hasZeroBalance =
+    balanceFetched &&
+    balanceSol !==
+      undefined &&
+    balanceSol <=
+      0;
+
+  let verdictClass =
+    'wallet-test-verdict-incompatible';
+  let verdictLabel =
+    'Connection works but token creation may fail';
+  let verdictHelper =
+    '';
+
+  if (
+    compatible &&
+    hasPositiveBalance
+  ) {
+    verdictClass =
+      'wallet-test-verdict-compatible';
+    verdictLabel =
+      'Compatible for token creation';
+  } else if (
+    compatible &&
+    hasZeroBalance
+  ) {
+    verdictClass =
+      'wallet-test-verdict-needs-sol';
+    verdictLabel =
+      'Wallet connected, but you need SOL to pay network fees.';
+    verdictHelper =
+      'Add a small amount of SOL before creating a token.';
+  }
 
   return `
     <strong>Wallet compatibility test</strong>
@@ -4923,24 +4957,91 @@ function renderWalletCompatibilityResults(
     <p class="wallet-test-verdict ${verdictClass}">
       ${verdictLabel}
     </p>
+    ${
+      verdictHelper
+        ? `<p class="wallet-test-verdict-helper">${verdictHelper}</p>`
+        : ''
+    }
   `;
 }
+
+function setWalletTestBusy(
+  busy: boolean
+) {
+  if (
+    !walletTestSummary
+  ) {
+    return;
+  }
+
+  walletTestSummary.classList.toggle(
+    'accordion-summary--busy',
+    busy
+  );
+  walletTestSummary.setAttribute(
+    'aria-busy',
+    busy
+      ? 'true'
+      : 'false'
+  );
+}
+
+function bindAccordionAccessibility() {
+  document
+    .querySelectorAll(
+      'details.accordion'
+    )
+    .forEach(
+      (element) => {
+        const details =
+          element as HTMLDetailsElement;
+
+        const summary =
+          details.querySelector(
+            'summary'
+          );
+
+        if (
+          !summary
+        ) {
+          return;
+        }
+
+        const syncExpanded =
+          () => {
+            summary.setAttribute(
+              'aria-expanded',
+              details.open
+                ? 'true'
+                : 'false'
+            );
+          };
+
+        syncExpanded();
+        details.addEventListener(
+          'toggle',
+          syncExpanded
+        );
+      }
+    );
+}
+
+bindAccordionAccessibility();
 
 async function runWalletCompatibilityTest() {
   if (
     !isDevelopment ||
     !walletTestResults ||
-    !testWalletButton
+    !walletTestAccordion?.open
   ) {
     return;
   }
 
-  walletTestResults.style.display =
-    'block';
   walletTestResults.innerHTML =
     'Testing wallet...';
-  testWalletButton.disabled =
-    true;
+  setWalletTestBusy(
+    true
+  );
 
   selectedWalletId =
     getSelectedWalletId();
@@ -4991,8 +5092,9 @@ async function runWalletCompatibilityTest() {
             'Wallet not found. Select an installed Solana wallet and try again.',
         }
       );
-    testWalletButton.disabled =
-      false;
+    setWalletTestBusy(
+      false
+    );
     return;
   }
 
@@ -5112,8 +5214,9 @@ async function runWalletCompatibilityTest() {
         }
       );
   } finally {
-    testWalletButton.disabled =
-      false;
+    setWalletTestBusy(
+      false
+    );
   }
 }
 
@@ -5750,9 +5853,15 @@ walletSelect.addEventListener(
   }
 );
 
-testWalletButton?.addEventListener(
-  'click',
+walletTestAccordion?.addEventListener(
+  'toggle',
   () => {
+    if (
+      !walletTestAccordion?.open
+    ) {
+      return;
+    }
+
     void runWalletCompatibilityTest();
   }
 );
