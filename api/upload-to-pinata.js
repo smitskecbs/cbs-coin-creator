@@ -1,7 +1,3 @@
-import { PublicKey } from "@solana/web3.js";
-import bs58 from "bs58";
-import nacl from "tweetnacl";
-
 const ALLOWED_ORIGINS = [
   "https://token-builder.cbs-coin.com",
   "http://localhost:5173",
@@ -23,15 +19,51 @@ const ALLOWED_MIME_TYPES = new Set([
 const ALLOWED_REQUEST_HEADERS =
   "content-type, x-wallet-address, x-upload-message, x-upload-signature";
 
-function setCorsHeaders(req, res) {
-  const origin = req.headers.origin;
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+function normalizeOrigin(origin) {
+  if (typeof origin !== "string") {
+    return null;
+  }
+
+  const trimmed = origin.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/\/+$/, "");
+}
+
+function isAllowedOrigin(origin) {
+  const normalized = normalizeOrigin(origin);
+
+  if (!normalized) {
+    return false;
+  }
+
+  return ALLOWED_ORIGINS.includes(normalized);
+}
+
+function getRequestOrigin(req) {
+  const origin = req.headers?.origin;
+
+  return normalizeOrigin(origin);
+}
+
+function setCorsHeaders(req, res) {
+  const origin = getRequestOrigin(req);
+
+  if (origin && isAllowedOrigin(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
 
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, GET");
   res.setHeader(
     "Access-Control-Allow-Headers",
     ALLOWED_REQUEST_HEADERS
@@ -39,18 +71,29 @@ function setCorsHeaders(req, res) {
   res.setHeader("Access-Control-Max-Age", "86400");
 }
 
-function handleOptionsPreflight(_req, res) {
-  setCorsHeaders(_req, res);
-  return res.status(204).end();
+function sendJson(res, statusCode, body) {
+  res.statusCode = statusCode;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(body));
 }
 
-function isValidSolanaPublicKey(address) {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
-    return false;
-  }
+function handleOptionsPreflight(req, res) {
+  setCorsHeaders(req, res);
+  res.statusCode = 204;
+  res.end();
+}
+
+function handleCorsDebugGet(req, res) {
+  setCorsHeaders(req, res);
+
+  const origin = getRequestOrigin(req);
+
+  sendJson(res, 200, {
+    ok: true,
+    allowedOrigins: ALLOWED_ORIGINS,
+    receivedOrigin: origin ?? "(none)",
+    originAllowed: origin ? isAllowedOrigin(origin) : false,
+  });
 }
 
 function parseUploadAuthMessage(message) {
@@ -112,31 +155,26 @@ function parseUploadAuthMessage(message) {
   };
 }
 
-function decodeUploadAuthMessageHeader(
-  encodedMessage
-) {
-  if (
-    typeof encodedMessage !==
-    "string"
-  ) {
+function decodeUploadAuthMessageHeader(encodedMessage) {
+  if (typeof encodedMessage !== "string") {
     return null;
   }
 
   try {
-    return Buffer.from(
-      encodedMessage,
-      "base64"
-    ).toString("utf8");
+    return Buffer.from(encodedMessage, "base64").toString("utf8");
   } catch (error) {
-    console.warn(
-      "Upload auth message decode failed:",
-      error
-    );
+    console.warn("Upload auth message decode failed:", error);
     return null;
   }
 }
 
-function verifyUploadAuthorization(req) {
+async function verifyUploadAuthorization(req) {
+  const { PublicKey } = await import("@solana/web3.js");
+  const bs58Module = await import("bs58");
+  const naclModule = await import("tweetnacl");
+  const bs58 = bs58Module.default ?? bs58Module;
+  const nacl = naclModule.default ?? naclModule;
+
   const walletAddress = req.headers["x-wallet-address"];
   const encodedMessage = req.headers["x-upload-message"];
   const signature = req.headers["x-upload-signature"];
@@ -145,16 +183,17 @@ function verifyUploadAuthorization(req) {
     return { ok: false, status: 401, error: "Upload authorization required." };
   }
 
-  const message =
-    decodeUploadAuthMessageHeader(
-      encodedMessage
-    );
+  const message = decodeUploadAuthMessageHeader(encodedMessage);
 
   if (!message) {
     return { ok: false, status: 401, error: "Invalid upload authorization." };
   }
 
-  if (!isValidSolanaPublicKey(walletAddress)) {
+  let publicKey;
+
+  try {
+    publicKey = new PublicKey(walletAddress);
+  } catch {
     return { ok: false, status: 401, error: "Invalid wallet address." };
   }
 
@@ -179,7 +218,7 @@ function verifyUploadAuthorization(req) {
   }
 
   const messageBytes = new TextEncoder().encode(message);
-  const publicKeyBytes = new PublicKey(walletAddress).toBytes();
+  const publicKeyBytes = publicKey.toBytes();
   const valid = nacl.sign.detached.verify(
     messageBytes,
     signatureBytes,
@@ -241,75 +280,92 @@ function validateMultipartMime(bodyBuffer) {
   return { ok: true };
 }
 
-export default async function handler(req, res) {
-  setCorsHeaders(req, res);
-
-  if (req.method === "OPTIONS") {
-    return handleOptionsPreflight(req, res);
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const authResult = verifyUploadAuthorization(req);
+async function handleUploadPost(req, res) {
+  const authResult = await verifyUploadAuthorization(req);
 
   if (!authResult.ok) {
-    return res.status(authResult.status).json({ error: authResult.error });
+    sendJson(res, authResult.status, { error: authResult.error });
+    return;
   }
 
+  const pinataJwt = process.env.PINATA_JWT;
+
+  if (!pinataJwt) {
+    console.error("Missing PINATA_JWT on server");
+    sendJson(res, 500, { error: "Upload service unavailable." });
+    return;
+  }
+
+  const contentType = req.headers["content-type"];
+
+  if (!contentType || !contentType.toLowerCase().startsWith("multipart/form-data")) {
+    sendJson(res, 400, { error: "Invalid upload content type." });
+    return;
+  }
+
+  const bodyBuffer = await readBodyWithLimit(req, MAX_BODY_BYTES);
+  const mimeCheck = validateMultipartMime(bodyBuffer);
+
+  if (!mimeCheck.ok) {
+    console.warn("Upload MIME rejected:", mimeCheck.reason);
+    sendJson(res, 400, { error: "Unsupported upload file type." });
+    return;
+  }
+
+  const pinataResponse = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${pinataJwt}`,
+      "Content-Type": contentType,
+    },
+    body: bodyBuffer,
+  });
+
+  const data = await pinataResponse.json();
+
+  if (!pinataResponse.ok) {
+    console.error("Pinata upload failed:", {
+      status: pinataResponse.status,
+      data,
+    });
+    sendJson(res, 502, { error: "Pinata upload failed." });
+    return;
+  }
+
+  sendJson(res, 200, {
+    IpfsHash: data.IpfsHash,
+    PinSize: data.PinSize,
+    Timestamp: data.Timestamp,
+  });
+}
+
+export default async function handler(req, res) {
+  const method = req.method ?? "GET";
+
   try {
-    const pinataJwt = process.env.PINATA_JWT;
-
-    if (!pinataJwt) {
-      console.error("Missing PINATA_JWT on server");
-      return res.status(500).json({ error: "Upload service unavailable." });
+    if (method === "OPTIONS") {
+      return handleOptionsPreflight(req, res);
     }
 
-    const contentType = req.headers["content-type"];
+    setCorsHeaders(req, res);
 
-    if (!contentType || !contentType.toLowerCase().startsWith("multipart/form-data")) {
-      return res.status(400).json({ error: "Invalid upload content type." });
+    if (method === "GET") {
+      return handleCorsDebugGet(req, res);
     }
 
-    const bodyBuffer = await readBodyWithLimit(req, MAX_BODY_BYTES);
-    const mimeCheck = validateMultipartMime(bodyBuffer);
-
-    if (!mimeCheck.ok) {
-      console.warn("Upload MIME rejected:", mimeCheck.reason);
-      return res.status(400).json({ error: "Unsupported upload file type." });
+    if (method !== "POST") {
+      return sendJson(res, 405, { error: "Method not allowed" });
     }
 
-    const pinataResponse = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${pinataJwt}`,
-        "Content-Type": contentType,
-      },
-      body: bodyBuffer,
-    });
-
-    const data = await pinataResponse.json();
-
-    if (!pinataResponse.ok) {
-      console.error("Pinata upload failed:", {
-        status: pinataResponse.status,
-        data,
-      });
-      return res.status(502).json({ error: "Pinata upload failed." });
-    }
-
-    return res.status(200).json({
-      IpfsHash: data.IpfsHash,
-      PinSize: data.PinSize,
-      Timestamp: data.Timestamp,
-    });
+    await handleUploadPost(req, res);
   } catch (error) {
+    setCorsHeaders(req, res);
+    console.error("upload-to-pinata handler error:", error);
+
     if (error?.code === "BODY_TOO_LARGE") {
-      return res.status(413).json({ error: "Upload exceeds the 2 MB limit." });
+      return sendJson(res, 413, { error: "Upload exceeds the 2 MB limit." });
     }
 
-    console.error("Pinata upload error:", error);
-    return res.status(500).json({ error: "Pinata upload failed." });
+    return sendJson(res, 500, { error: "Pinata upload failed." });
   }
 }

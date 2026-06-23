@@ -3,24 +3,5 @@
     "api/upload-to-pinata.js": {
       "maxDuration": 30
     }
-  },
-  "headers": [
-    {
-      "source": "/api/upload-to-pinata",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "POST, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "content-type, x-wallet-address, x-upload-message, x-upload-signature"
-        },
-        {
-          "key": "Access-Control-Max-Age",
-          "value": "86400"
-        }
-      ]
-    }
-  ]
+  }
 }
