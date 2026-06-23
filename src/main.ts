@@ -727,6 +727,28 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               Token tool status will appear here
             </div>
 
+            <div class="warning-box">
+              <strong>Permanent action.</strong>
+              After locking metadata, logo, description and socials can no longer be changed.
+            </div>
+
+            <label class="checkbox-row">
+              <input
+                id="lockMetadataConfirm"
+                type="checkbox"
+              />
+              I understand this action is permanent and metadata can never be changed again.
+            </label>
+
+            <button
+              id="lockMetadataButton"
+              class="connect-button primary-btn"
+              type="button"
+              disabled
+            >
+              Lock Metadata Permanently
+            </button>
+
             <div class="transfer-authorities-section">
               <h3 class="transfer-authorities-title">
                 Transfer Authorities
@@ -807,28 +829,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
                 Authority transfer status will appear here
               </div>
             </div>
-
-            <div class="warning-box">
-              <strong>Permanent action.</strong>
-              After locking metadata, logo, description and socials can no longer be changed.
-            </div>
-
-            <label class="checkbox-row">
-              <input
-                id="lockMetadataConfirm"
-                type="checkbox"
-              />
-              I understand this action is permanent and metadata can never be changed again.
-            </label>
-
-            <button
-              id="lockMetadataButton"
-              class="connect-button primary-btn"
-              type="button"
-              disabled
-            >
-              Lock Metadata Permanently
-            </button>
           </div>
         </div>
       </details>
