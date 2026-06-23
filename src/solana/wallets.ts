@@ -70,6 +70,13 @@ export type SolanaWalletProvider = {
   ) => Promise<{
     signature: string;
   }>;
+
+  signMessage?: (
+    message: Uint8Array,
+    display?: string
+  ) => Promise<{
+    signature: Uint8Array;
+  }>;
 };
 
 export type DetectedWallet = {
@@ -455,6 +462,281 @@ function walletStandardWalletId(
   return `ws-${normalizedName}`;
 }
 
+function normalizeSignMessageResult(
+  result: unknown
+): {
+  signature: Uint8Array;
+} {
+  if (
+    !result ||
+    typeof result !==
+      'object'
+  ) {
+    throw new Error(
+      'Wallet did not return a message signature.'
+    );
+  }
+
+  const signature = (
+    result as {
+      signature?: unknown;
+    }
+  ).signature;
+
+  if (
+    signature instanceof
+    Uint8Array
+  ) {
+    return {
+      signature,
+    };
+  }
+
+  if (
+    Array.isArray(
+      signature
+    )
+  ) {
+    return {
+      signature:
+        Uint8Array.from(
+          signature
+        ),
+    };
+  }
+
+  throw new Error(
+    'Wallet did not return a message signature.'
+  );
+}
+
+function getInjectedSignMessageFn(
+  walletId: string
+):
+  | ((
+      message: Uint8Array,
+      display?: string
+    ) => Promise<unknown>)
+  | null {
+  switch (walletId) {
+    case 'phantom': {
+      const provider =
+        window.phantom
+          ?.solana;
+
+      if (
+        typeof provider?.signMessage ===
+        'function'
+      ) {
+        return provider.signMessage.bind(
+          provider
+        );
+      }
+
+      return null;
+    }
+    case 'solflare': {
+      const provider =
+        window.solflare;
+
+      if (
+        typeof provider?.signMessage ===
+        'function'
+      ) {
+        return provider.signMessage.bind(
+          provider
+        );
+      }
+
+      return null;
+    }
+    case 'backpack': {
+      const provider =
+        window.backpack
+          ?.solana;
+
+      if (
+        typeof provider?.signMessage ===
+        'function'
+      ) {
+        return provider.signMessage.bind(
+          provider
+        );
+      }
+
+      return null;
+    }
+    case 'glow': {
+      const glow =
+        window.glow;
+      const provider =
+        (
+          glow as
+            | {
+                solana?: SolanaWalletProvider;
+              }
+            | undefined
+        )?.solana ??
+        (glow as
+          | SolanaWalletProvider
+          | undefined);
+
+      if (
+        typeof provider?.signMessage ===
+        'function'
+      ) {
+        return provider.signMessage.bind(
+          provider
+        );
+      }
+
+      return null;
+    }
+    default: {
+      const provider =
+        window.solana;
+
+      if (
+        typeof provider?.signMessage ===
+        'function'
+      ) {
+        return provider.signMessage.bind(
+          provider
+        );
+      }
+
+      return null;
+    }
+  }
+}
+
+function enrichProviderSignMessage(
+  provider: SolanaWalletProvider,
+  walletId: string
+): SolanaWalletProvider {
+  if (
+    typeof provider.signMessage ===
+    'function'
+  ) {
+    return provider;
+  }
+
+  const injectedSignMessage =
+    getInjectedSignMessageFn(
+      walletId
+    );
+
+  if (
+    !injectedSignMessage
+  ) {
+    return provider;
+  }
+
+  return {
+    ...provider,
+    async signMessage(
+      message,
+      display
+    ) {
+      const result =
+        await injectedSignMessage(
+          message,
+          display ??
+            'utf8'
+        );
+
+      return normalizeSignMessageResult(
+        result
+      );
+    },
+  };
+}
+
+export function walletSupportsUploadAuthorization(
+  provider: SolanaWalletProvider
+): boolean {
+  return (
+    typeof provider.signMessage ===
+    'function'
+  );
+}
+
+export function logUploadAuthorizationWalletDebug(
+  walletId: string,
+  provider: SolanaWalletProvider
+): void {
+  if (
+    !import.meta.env.DEV
+  ) {
+    return;
+  }
+
+  const detected =
+    getDetectedWallet(
+      walletId
+    );
+
+  const walletStandardWallet =
+    detected?.source ===
+    'wallet-standard'
+      ? getWalletStandardWallets().find(
+          (
+            wallet
+          ) =>
+            walletStandardWalletId(
+              wallet
+            ) ===
+            walletId
+        )
+      : undefined;
+
+  console.log(
+    '[upload-auth] wallet debug',
+    {
+      walletName:
+        detected?.name ??
+        walletId,
+      walletId,
+      providerSource:
+        detected?.source ??
+        'unknown',
+      hasSignMessage:
+        typeof provider.signMessage ===
+        'function',
+      walletStandardFeatures:
+        walletStandardWallet
+          ? Object.keys(
+              walletStandardWallet.features
+            )
+          : undefined,
+      hasWalletStandardSignMessage:
+        Boolean(
+          walletStandardWallet?.features[
+            'solana:signMessage'
+          ]
+        ),
+      hasInjectedSignMessage:
+        Boolean(
+          getInjectedSignMessageFn(
+            walletId
+          )
+        ),
+    }
+  );
+}
+
+export function prepareProviderForUploadAuth(
+  provider: SolanaWalletProvider,
+  walletId: string
+): SolanaWalletProvider {
+  return enrichProviderSignMessage(
+    adaptWalletProvider(
+      provider
+    ),
+    walletId
+  );
+}
+
 function normalizeProvider(
   provider: SolanaWalletProvider
 ): SolanaWalletProvider {
@@ -663,6 +945,24 @@ function createWalletStandardProvider(
         }
       | undefined;
 
+  const signMessageFeature =
+    features[
+      'solana:signMessage'
+    ] as
+      | {
+          signMessage: (input: {
+            account: {
+              address: string;
+            };
+            message: Uint8Array;
+          }) => Promise<
+            Array<{
+              signature: Uint8Array;
+            }>
+          >;
+        }
+      | undefined;
+
   if (
     !connectFeature ||
     (
@@ -843,6 +1143,77 @@ function createWalletStandardProvider(
                 ),
         };
       },
+
+      async signMessage(
+        message
+      ) {
+        if (
+          !signMessageFeature
+        ) {
+          throw new Error(
+            WALLET_UNSUPPORTED_SIGNING_MESSAGE
+          );
+        }
+
+        let connectedAddress:
+          | string
+          | null =
+          null;
+
+        try {
+          if (
+            provider.publicKey
+          ) {
+            connectedAddress =
+              normalizeWalletPublicKey(
+                provider.publicKey
+              );
+          }
+        } catch {
+          connectedAddress =
+            null;
+        }
+
+        let account =
+          activeAccount ??
+          wallet.accounts[0];
+
+        if (
+          connectedAddress
+        ) {
+          account =
+            wallet.accounts.find(
+              (
+                entry
+              ) =>
+                entry.address ===
+                connectedAddress
+            ) ??
+            account;
+        }
+
+        if (
+          !account
+        ) {
+          throw new Error(
+            'No wallet account selected.'
+          );
+        }
+
+        const result =
+          await signMessageFeature.signMessage(
+            {
+              account,
+              message,
+            }
+          );
+
+        return {
+          signature:
+            result[0]!
+              .signature,
+        };
+      },
     };
 
   return normalizeProvider(
@@ -994,16 +1365,21 @@ function finalizeDetectedWallet(
   wallet: DetectedWallet,
   brand: string
 ): DetectedWallet {
+  const walletId =
+    getStableWalletId(
+      brand,
+      wallet
+    );
+
   return {
     ...wallet,
-    id:
-      getStableWalletId(
-        brand,
-        wallet
-      ),
+    id: walletId,
     provider:
-      adaptWalletProvider(
-        wallet.provider
+      enrichProviderSignMessage(
+        adaptWalletProvider(
+          wallet.provider
+        ),
+        walletId
       ),
   };
 }

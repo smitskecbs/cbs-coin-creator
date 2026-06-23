@@ -29,6 +29,13 @@ type WalletLike = {
   ) => Promise<{
     signature: string;
   }>;
+
+  signMessage?: (
+    message: Uint8Array,
+    display?: string
+  ) => Promise<{
+    signature: Uint8Array;
+  }>;
 };
 
 export const WALLET_PUBLIC_KEY_READ_ERROR =
@@ -316,6 +323,11 @@ export function adaptWalletProvider<
 
       signAndSendTransaction:
         provider.signAndSendTransaction?.bind(
+          provider
+        ),
+
+      signMessage:
+        provider.signMessage?.bind(
           provider
         ),
 

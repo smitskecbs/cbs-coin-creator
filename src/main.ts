@@ -23,6 +23,9 @@ import {
 } from './solana/wallets';
 
 import {
+  requestPinataUploadAuthorization,
+  UPLOAD_AUTH_CANCELLED_MESSAGE,
+  UPLOAD_AUTH_UNSUPPORTED_WALLET_MESSAGE,
   uploadFileToPinata,
   uploadMetadataToPinata,
 } from './uploadToPinata';
@@ -2144,12 +2147,57 @@ function clearPendingVanityTokenCreate() {
   purgeLegacyPendingVanityMintStorage();
 }
 
+function getPinataUploadAuthorizationErrorMessage(
+  error: unknown
+): string | null {
+  if (
+    !(
+      error instanceof
+      Error
+    )
+  ) {
+    return null;
+  }
+
+  if (
+    error.message ===
+      UPLOAD_AUTH_CANCELLED_MESSAGE ||
+    error.message ===
+      UPLOAD_AUTH_UNSUPPORTED_WALLET_MESSAGE
+  ) {
+    return error.message;
+  }
+
+  return null;
+}
+
 async function uploadCreateTokenMetadata(
   metadataInput: CreateTokenMetadataInput,
-  tokenLogoFile: File
+  tokenLogoFile: File,
+  walletProvider: WalletProvider,
+  walletAddress: string,
+  walletId: string
 ): Promise<{
   metadataUrl: string;
 }> {
+  progressStatus.innerHTML =
+    'Authorize upload...';
+  showActionPopup(
+    'Authorize upload',
+    'Authorize upload for CBS Token Builder. This does not move tokens or SOL.',
+    {
+      showStopButton: false,
+      state: 'loading',
+    }
+  );
+
+  const uploadAuth =
+    await requestPinataUploadAuthorization(
+      walletProvider,
+      walletAddress,
+      walletId
+    );
+
   progressStatus.innerHTML =
     'Uploading logo...';
   showActionPopup(
@@ -2163,7 +2211,8 @@ async function uploadCreateTokenMetadata(
 
   const uploadedLogo =
     await uploadFileToPinata(
-      tokenLogoFile
+      tokenLogoFile,
+      uploadAuth
     );
 
   console.log(
@@ -2232,7 +2281,7 @@ async function uploadCreateTokenMetadata(
         facebook:
           metadataInput.tokenFacebook,
       },
-    });
+    }, uploadAuth);
 
   console.log(
     'Uploaded metadata:',
@@ -2300,7 +2349,10 @@ async function ensurePendingVanityMetadataUploaded(
   const uploadedMetadata =
     await uploadCreateTokenMetadata(
       pending.metadataInput,
-      logoFile
+      logoFile,
+      pending.writeWallet,
+      pending.writeWalletAddress,
+      selectedWalletId
     );
 
   pending.uploadedMetadata =
@@ -2445,11 +2497,24 @@ async function continueStoredPendingVanityMint() {
       return;
     }
 
+    const uploadAuthError =
+      getPinataUploadAuthorizationErrorMessage(
+        error
+      );
+
     progressStatus.innerHTML =
+      uploadAuthError ??
       'Token creation failed';
     showActionPopup(
-      'Failed',
-      'Token creation failed. Check your wallet and try again.',
+      uploadAuthError ===
+      UPLOAD_AUTH_CANCELLED_MESSAGE
+        ? 'Upload cancelled'
+        : uploadAuthError ===
+          UPLOAD_AUTH_UNSUPPORTED_WALLET_MESSAGE
+          ? 'Upload not supported'
+          : 'Failed',
+      uploadAuthError ??
+        'Token creation failed. Check your wallet and try again.',
       {
         showStopButton: false,
         state: 'error',
@@ -3614,12 +3679,25 @@ actionPopupTryAgainButton.addEventListener(
         return;
       }
 
+      const uploadAuthError =
+        getPinataUploadAuthorizationErrorMessage(
+          error
+        );
+
       clearPendingVanityTokenCreate();
       progressStatus.innerHTML =
+        uploadAuthError ??
         'Token creation failed';
       showActionPopup(
-        'Failed',
-        'Token creation failed. Check your wallet and try again.',
+        uploadAuthError ===
+        UPLOAD_AUTH_CANCELLED_MESSAGE
+          ? 'Upload cancelled'
+          : uploadAuthError ===
+            UPLOAD_AUTH_UNSUPPORTED_WALLET_MESSAGE
+            ? 'Upload not supported'
+            : 'Failed',
+        uploadAuthError ??
+          'Token creation failed. Check your wallet and try again.',
         {
           showStopButton: false,
           state: 'error',
@@ -3661,7 +3739,7 @@ lowSolUnderstandButton.addEventListener(
   'click',
   () => {
     resolveLowSolBalanceModal(
-      false
+      true
     );
   }
 );
@@ -4376,6 +4454,189 @@ function isValidSolanaPublicKey(
   );
 }
 
+function escapeHtml(
+  value: string
+): string {
+  return value
+    .replace(
+      /&/g,
+      '&amp;'
+    )
+    .replace(
+      /</g,
+      '&lt;'
+    )
+    .replace(
+      />/g,
+      '&gt;'
+    )
+    .replace(
+      /"/g,
+      '&quot;'
+    )
+    .replace(
+      /'/g,
+      '&#39;'
+    );
+}
+
+type CreateTokenInputValidation =
+  | {
+      ok: true;
+      tokenName: string;
+      symbol: string;
+      decimals: number;
+      supply: number;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+function validateCreateTokenInputs(
+  tokenNameRaw: string,
+  symbolRaw: string,
+  decimalsRaw: string,
+  supplyRaw: string
+): CreateTokenInputValidation {
+  const tokenName =
+    tokenNameRaw.trim();
+  const symbol =
+    symbolRaw.trim();
+
+  if (
+    !tokenName
+  ) {
+    return {
+      ok: false,
+      message:
+        'Enter a token name before creating.',
+    };
+  }
+
+  if (
+    !symbol
+  ) {
+    return {
+      ok: false,
+      message:
+        'Enter a token symbol before creating.',
+    };
+  }
+
+  const decimalsInput =
+    decimalsRaw.trim();
+
+  if (
+    !decimalsInput ||
+    !/^\d+$/.test(
+      decimalsInput
+    )
+  ) {
+    return {
+      ok: false,
+      message:
+        'Decimals must be a whole number from 0 to 9.',
+    };
+  }
+
+  const decimals =
+    Number(
+      decimalsInput
+    );
+
+  if (
+    !Number.isInteger(
+      decimals
+    ) ||
+    decimals <
+      0 ||
+    decimals >
+      9
+  ) {
+    return {
+      ok: false,
+      message:
+        'Decimals must be a whole number from 0 to 9.',
+    };
+  }
+
+  const supplyInput =
+    supplyRaw.trim();
+
+  if (
+    !supplyInput ||
+    !/^\d+$/.test(
+      supplyInput
+    )
+  ) {
+    return {
+      ok: false,
+      message:
+        'Initial supply must be a whole number of at least 1.',
+    };
+  }
+
+  const supply =
+    Number(
+      supplyInput
+    );
+
+  if (
+    !Number.isInteger(
+      supply
+    ) ||
+    supply <
+      1
+  ) {
+    return {
+      ok: false,
+      message:
+        'Initial supply must be a whole number of at least 1.',
+    };
+  }
+
+  try {
+    const rawAmount =
+      BigInt(
+        supply
+      ) *
+      (BigInt(
+        10
+      ) **
+        BigInt(
+          decimals
+        ));
+    const u64Max =
+      18446744073709551615n;
+
+    if (
+      rawAmount >
+      u64Max
+    ) {
+      return {
+        ok: false,
+        message:
+          'Supply and decimals are too large for Solana token limits.',
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      message:
+        'Supply and decimals are too large for Solana token limits.',
+    };
+  }
+
+  return {
+    ok: true,
+    tokenName,
+    symbol,
+    decimals,
+    supply,
+  };
+}
+
 function formatAuthorityTransferResultsHtml(
   results: AuthorityTransferStepResult[],
   network: SolanaNetwork,
@@ -4443,7 +4704,7 @@ function formatAuthorityTransferResultsHtml(
       '<br><br><strong>Transfer stopped:</strong>'
     );
     lines.push(
-      `${AUTHORITY_TRANSFER_LABELS[failed.type]} failed: ${failed.error ?? 'Unknown error'}`
+      `${AUTHORITY_TRANSFER_LABELS[failed.type]} failed: ${escapeHtml(failed.error ?? 'Unknown error')}`
     );
   }
 
@@ -4878,7 +5139,7 @@ function renderWalletCompatibilityResults(
 
     ${
       errorMessage
-        ? `<p class="wallet-test-error">${errorMessage}</p>`
+        ? `<p class="wallet-test-error">${escapeHtml(errorMessage)}</p>`
         : ''
     }
 
@@ -6009,10 +6270,62 @@ tokenForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const tokenName =
+  const tokenNameRaw =
     tokenNameInput.value;
-  const symbol =
+  const symbolRaw =
     tokenSymbolInput.value;
+
+  const decimalsRaw =
+    (
+      document.getElementById(
+        'tokenDecimals'
+      ) as HTMLInputElement
+    ).value;
+
+  const supplyRaw =
+    (
+      document.getElementById(
+        'tokenSupply'
+      ) as HTMLInputElement
+    ).value;
+
+  const validatedInputs =
+    validateCreateTokenInputs(
+      tokenNameRaw,
+      symbolRaw,
+      decimalsRaw,
+      supplyRaw
+    );
+
+  if (
+    validatedInputs.ok ===
+    false
+  ) {
+    showUserError(
+      validatedInputs.message
+    );
+    showActionPopup(
+      'Invalid token details',
+      validatedInputs.message,
+      {
+        showStopButton: false,
+        state: 'error',
+      }
+    );
+    hideActionPopup(
+      POPUP_READ_MS
+    );
+    return;
+  }
+
+  const tokenName =
+    validatedInputs.tokenName;
+  const symbol =
+    validatedInputs.symbol;
+  const decimals =
+    validatedInputs.decimals;
+  const supply =
+    validatedInputs.supply;
 
   const tokenDescription =
     (
@@ -6023,15 +6336,6 @@ tokenForm.addEventListener('submit', async (event) => {
 
   const tokenTags =
     getSelectedTokenTags();
-
-  const decimals =
-    Number(
-      (
-        document.getElementById(
-          'tokenDecimals'
-        ) as HTMLInputElement
-      ).value
-    );
 
   const tokenWebsite =
     (
@@ -6067,15 +6371,6 @@ tokenForm.addEventListener('submit', async (event) => {
         'tokenFacebook'
       ) as HTMLInputElement
     ).value;
-
-  const supply =
-    Number(
-      (
-        document.getElementById(
-          'tokenSupply'
-        ) as HTMLInputElement
-      ).value
-    );
 
   const tokenLogoFile =
     tokenLogoInput?.files?.[0];
@@ -6290,7 +6585,10 @@ tokenForm.addEventListener('submit', async (event) => {
     const uploadedMetadata =
       await uploadCreateTokenMetadata(
         metadataInput,
-        tokenLogoFile
+        tokenLogoFile,
+        writeWallet,
+        writeWalletAddress,
+        selectedWalletId
       );
 
     showWalletConfirmPopup(
@@ -6421,13 +6719,27 @@ tokenForm.addEventListener('submit', async (event) => {
     error.message.includes(
       'Vanity mint not found'
     );
+  const uploadAuthError =
+    getPinataUploadAuthorizationErrorMessage(
+      error
+    );
 
   let title =
     'Failed';
   let message =
     'Token creation failed. Check your wallet and try again.';
 
-  if (expired) {
+  if (uploadAuthError) {
+    progressStatus.innerHTML =
+      uploadAuthError;
+    title =
+      uploadAuthError ===
+      UPLOAD_AUTH_CANCELLED_MESSAGE
+        ? 'Upload cancelled'
+        : 'Upload not supported';
+    message =
+      uploadAuthError;
+  } else if (expired) {
     title =
       'Transaction expired';
     message =
@@ -6582,6 +6894,51 @@ manageTokenButton.addEventListener(
       manageTokenStatus.innerHTML =
         feedbackMessages.join('<br>') || 'No revoke actions selected.';
       hideActionPopup(POPUP_READ_MS);
+      return;
+    }
+
+    const connectedWallet =
+      walletSession.address;
+
+    if (
+      shouldRevokeMint &&
+      tokenInfo.mintAuthority !==
+        connectedWallet
+    ) {
+      manageTokenStatus.textContent =
+        'Connect the wallet that holds mint authority before revoking mint authority.';
+      showActionPopup(
+        'Wrong wallet',
+        'Connect the wallet that holds mint authority before revoking mint authority.',
+        {
+          showStopButton: false,
+          state: 'error',
+        }
+      );
+      hideActionPopup(
+        POPUP_READ_MS
+      );
+      return;
+    }
+
+    if (
+      shouldRevokeFreeze &&
+      tokenInfo.freezeAuthority !==
+        connectedWallet
+    ) {
+      manageTokenStatus.textContent =
+        'Connect the wallet that holds freeze authority before revoking freeze authority.';
+      showActionPopup(
+        'Wrong wallet',
+        'Connect the wallet that holds freeze authority before revoking freeze authority.',
+        {
+          showStopButton: false,
+          state: 'error',
+        }
+      );
+      hideActionPopup(
+        POPUP_READ_MS
+      );
       return;
     }
 
@@ -7022,11 +7379,22 @@ transferAuthoritiesButton.addEventListener(
           POPUP_READ_MS
         );
       } else {
+        const transferError =
+          results[0]?.error;
+
+        if (
+          transferError
+        ) {
+          console.error(
+            transferError
+          );
+        }
+
         showActionPopup(
           'Transfer failed',
-          results[0]
-            ?.error ??
-            'Authority transfer failed. Check your wallet and try again.',
+          transferError
+            ? `Authority transfer failed: ${escapeHtml(transferError)}`
+            : 'Authority transfer failed. Check your wallet and try again.',
           {
             showStopButton:
               false,
@@ -7229,6 +7597,24 @@ updateMetadataButton.addEventListener(
   (document.getElementById('updateLogo') as HTMLInputElement).files?.[0];
 
       updateMetadataStatus.innerHTML =
+        'Authorize upload...';
+      showActionPopup(
+        'Authorize upload',
+        'Authorize upload for CBS Token Builder. This does not move tokens or SOL.',
+        {
+          showStopButton: false,
+          state: 'loading',
+        }
+      );
+
+      const uploadAuth =
+        await requestPinataUploadAuthorization(
+          walletSession.provider,
+          walletSession.address,
+          selectedWalletId
+        );
+
+      updateMetadataStatus.innerHTML =
         'Uploading new metadata...';
 
       let updatedImageUrl = '';
@@ -7245,7 +7631,8 @@ updateMetadataButton.addEventListener(
 
         const uploadedLogo =
           await uploadFileToPinata(
-            updateLogo
+            updateLogo,
+            uploadAuth
           );
 
         updatedImageUrl =
@@ -7311,7 +7698,7 @@ updateMetadataButton.addEventListener(
         updateFacebook ||
         currentMetadata.json.extensions?.facebook,
     },
-  });
+  }, uploadAuth);
 
 console.log(
   'Updated metadata uploaded:',
@@ -7378,11 +7765,24 @@ hideActionPopup(POPUP_READ_MS);
     } catch (error) {
       console.error(error);
 
+      const uploadAuthError =
+        getPinataUploadAuthorizationErrorMessage(
+          error
+        );
+
       updateMetadataStatus.innerHTML =
+        uploadAuthError ??
         'Metadata update failed';
       showActionPopup(
-        'Failed',
-        'Metadata update failed.',
+        uploadAuthError ===
+        UPLOAD_AUTH_CANCELLED_MESSAGE
+          ? 'Upload cancelled'
+          : uploadAuthError ===
+            UPLOAD_AUTH_UNSUPPORTED_WALLET_MESSAGE
+            ? 'Upload not supported'
+            : 'Failed',
+        uploadAuthError ??
+          'Metadata update failed.',
         {
           showStopButton: false,
           state: 'error',
@@ -7458,6 +7858,35 @@ hideActionPopup(POPUP_READ_MS);
           }
         );
         hideActionPopup(POPUP_READ_MS);
+        return;
+      }
+
+      const onChainMetadata =
+        await fetchOnChainTokenMetadata(
+          mintAddress,
+          selectedNetwork
+        );
+      const updateAuthority =
+        onChainMetadata.updateAuthority;
+
+      if (
+        !updateAuthority ||
+        updateAuthority !==
+          walletSession.address
+      ) {
+        manageTokenStatus.textContent =
+          'Connect the wallet that holds metadata update authority before locking metadata.';
+        showActionPopup(
+          'Wrong wallet',
+          'Connect the current metadata update authority wallet before locking metadata.',
+          {
+            showStopButton: false,
+            state: 'error',
+          }
+        );
+        hideActionPopup(
+          POPUP_READ_MS
+        );
         return;
       }
 
