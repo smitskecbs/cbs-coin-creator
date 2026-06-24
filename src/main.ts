@@ -2940,6 +2940,25 @@ async function finishTokenCreationAfterUmi(
       <br><br>
 
       <strong>
+        Name:
+      </strong><br>
+      ${escapeHtml(
+        ctx.metadataInput
+          .tokenName
+      )}
+
+      <br><br>
+
+      <strong>
+        Symbol:
+      </strong><br>
+      ${escapeHtml(
+        ctx.metadataInput.symbol
+      )}
+
+      <br><br>
+
+      <strong>
         Active mint:
       </strong><br>
       <a
@@ -2958,6 +2977,18 @@ async function finishTokenCreationAfterUmi(
       ${uploadedMetadata.metadataUrl}
     `;
   }
+
+  setActiveTokenDisplayCache({
+    mint:
+      umiResult.mintAddress,
+    name:
+      ctx.metadataInput
+        .tokenName,
+    symbol:
+      ctx.metadataInput.symbol,
+    metadataUrl:
+      uploadedMetadata.metadataUrl,
+  });
 
   await setActiveMint(
     umiResult.mintAddress,
@@ -4314,6 +4345,71 @@ const transferAuthorityStatus =
 
 let activeMintAddress = '';
 let pendingAction: string | null = null;
+
+type ActiveTokenDisplayCache = {
+  mint: string;
+  name: string;
+  symbol: string;
+  metadataUrl?: string;
+};
+
+let activeTokenDisplayCache:
+  ActiveTokenDisplayCache | null =
+  null;
+
+function setActiveTokenDisplayCache(
+  entry: ActiveTokenDisplayCache
+) {
+  activeTokenDisplayCache =
+    entry;
+}
+
+function getTokenDisplayForMint(
+  mintAddress: string
+): ActiveTokenDisplayCache | null {
+  if (
+    !activeTokenDisplayCache
+  ) {
+    return null;
+  }
+
+  if (
+    activeTokenDisplayCache.mint !==
+    mintAddress.trim()
+  ) {
+    return null;
+  }
+
+  return activeTokenDisplayCache;
+}
+
+function renderTokenDisplayCacheHtml(
+  mintAddress: string
+): string {
+  const display =
+    getTokenDisplayForMint(
+      mintAddress
+    );
+
+  if (
+    !display
+  ) {
+    return '';
+  }
+
+  return `
+    <strong>Name:</strong><br>
+    ${escapeHtml(display.name)}
+
+    <br><br>
+
+    <strong>Symbol:</strong><br>
+    ${escapeHtml(display.symbol)}
+
+    <br><br>
+  `;
+}
+
 let activeMintAuthority:
   | string
   | null = null;
@@ -5626,6 +5722,9 @@ function renderTokenInfoBox(
     );
 
   tokenInfoBox.innerHTML = `
+    ${renderTokenDisplayCacheHtml(
+      mintAddress
+    )}
     <strong>Active mint:</strong><br>
     <a
       href="${explorerUrl}"
@@ -5750,6 +5849,53 @@ async function refreshActiveTokenInfo(
         '[state] metadata refresh skipped:',
         metadataError
       );
+    }
+
+    if (
+      getTokenDisplayForMint(
+        mint
+      )
+    ) {
+      try {
+        const metadataJson =
+          await fetchTokenMetadataJson(
+            mint,
+            selectedNetwork
+          );
+
+        const jsonName =
+          metadataJson.json
+            ?.name;
+        const jsonSymbol =
+          metadataJson.json
+            ?.symbol;
+
+        if (
+          jsonName &&
+          jsonSymbol
+        ) {
+          setActiveTokenDisplayCache(
+            {
+              mint,
+              name:
+                jsonName,
+              symbol:
+                jsonSymbol,
+              metadataUrl:
+                metadataJson.onChainUri ||
+                activeTokenDisplayCache?.metadataUrl,
+            }
+          );
+
+          renderTokenInfoBox(
+            tokenInfo,
+            mint,
+            selectedNetwork
+          );
+        }
+      } catch {
+        // keep local cached name/symbol
+      }
     }
   } catch {
     tokenInfoBox.innerHTML =
@@ -5917,6 +6063,8 @@ function bindMintAddressInputs() {
       ) {
         activeMintAddress =
           '';
+        activeTokenDisplayCache =
+          null;
         tokenInfoBox.innerHTML =
           'Token info will appear here';
         resetMetadataMutabilityState();
